@@ -1,19 +1,32 @@
 # llm-character
 
-Build LLM character prompts with personality traits, a live emotion vector, and secrets that unlock only when the character actually feels like talking.
+**Give your LLM characters secrets they can actually keep.**
 
-No inference, no memory store, no vendor SDK. It turns a character definition plus a state vector into a system prompt, and turns the reply back into state. Bring your own model.
+You're building a game or an app where people talk to AI characters. Some characters know things they shouldn't say: the suspect did it, the merchant can be bribed, the guard saw who left. You have two bad options:
+
+- **Put the secret in the prompt** → players extract it with pressure, tricks, or a jailbreak. It's in there; it will come out.
+- **Leave it out** → the character doesn't know it has a secret. It answers the dangerous question with a cheerful blank instead of getting defensive.
+
+`llm-character` gives you a third option:
+
+1. **Split every secret in two.** The character always knows *that* it's hiding something ("there's something about that night you don't volunteer"), so it deflects and gets nervous about the right topic. But the actual content is **not in the prompt** until the player earns it — and what's not in the prompt cannot be leaked, tricked out, or jailbroken.
+2. **Make "earning it" concrete.** Each character has an emotional state (fear, anger, trust, guilt, …) that updates every turn. A secret unlocks when the state crosses the threshold you set — enough guilt, enough trust — and/or when a condition in your code passes, like "the player has 3 pieces of evidence".
+3. **Know when it happened.** When the character does open up, you get the secret's id back in code, verified against what the character actually said — so your game can react.
+
+It's a small, zero-dependency library: it builds the system prompt and parses the reply. Bring any model — OpenAI, Claude, Gemini, local.
 
 ```bash
 npm install llm-character
 ```
 
+## Example
+
 ```ts
-import { createEngine } from 'llm-character';
+import { createEngine, type Character } from 'llm-character';
 
 const engine = createEngine();
 
-const halden = {
+const halden: Character = {
   identity: 'You are Halden, night porter at the Ardwick Hotel. You are speaking to an inspector.',
   epistemicBound: 'You answer only from what a porter on the night desk could know.',
   traits: {
@@ -33,90 +46,93 @@ const halden = {
     unlock: { emotion: 'guilt', gte: 4 },
   }],
 };
-
-let state = engine.baseline(halden);
-
-const system = engine.buildContext(halden, { state });   // → your model's system prompt
-const reply = engine.parseReply(rawModelOutput, { secrets: halden.secrets });
-
-reply.visible;   // what you show the player, scaffolding stripped
-reply.state;     // the updated vector — feed it back next turn
-reply.revealed;  // ['left-the-desk'] once he actually says it
 ```
 
-## Why not just put the secret in the prompt
-
-Because then it comes out on turn one. The usual workaround — leave the secret out entirely until some external flag flips — gives you a character with no inner life, blandly cooperative right up until the moment it isn't.
-
-Every secret here has two tiers:
-
-- **`abstract`** is always in the prompt. The character knows it is carrying something, so it can deflect, change the subject and get defensive about the right topic — without holding anything that would spoil it.
-- **`concrete`** only enters once `unlock` passes. That's the payload.
-
-The gate is an expression over the character's own emotional state:
+Then, every turn:
 
 ```ts
-unlock: { emotion: 'guilt', gte: 4 }
-unlock: { sum: ['trust', 'sadness'], gte: 6 }
-unlock: { all: [{ emotion: 'trust', gte: 3 }, { emotion: 'sadness', gte: 3 }] }
+let state = engine.baseline(halden);
+
+// 1. build the system prompt for this turn
+const system = engine.buildContext(halden, { state });
+
+// 2. send it to your model, however you like
+const raw = await callYourModel(system, messages);
+
+// 3. parse the reply
+const reply = engine.parseReply(raw, { secrets: halden.secrets });
+
+reply.visible;   // the text to show the player
+reply.state;     // Halden's updated emotions — feed back into step 1 next turn
+reply.revealed;  // ['left-the-desk'] on the turn he admits it
+reply.control;   // 'end' if he refuses to keep talking
 ```
 
-An unlocked secret is *permitted*, never compelled — whether it actually gets said is still governed by the personality above it in the prompt.
+That's the whole loop. The model reports its emotional state in a hidden block at the end of each reply; the library reads it and strips it, so the player never sees machinery.
 
-### Secrets that must be earned, not felt
+Run `npx tsx examples/interrogation.ts` for a full scripted interrogation — no API key needed.
 
-Some things should never be talked out of someone, however well the conversation goes. Add `requires` — a predicate evaluated in code against whatever you pass as `context`:
+## How the pieces work
+
+### Emotions
+
+Seven axes, each 0–10: `fear, anger, contempt, sadness, joy, trust, guilt`. The prompt tells the model what the character feels *right now* and how that intensity should change its words — not just its mood. High anger means broken sentences and refusals, not a polite paragraph with an exclamation mark.
+
+Emotions only move when the model reports a change, so in practice they climb. Call `decay` when time passes between conversations:
+
+```ts
+state = engine.decay(state, halden, 3); // 3 steps back toward baseline
+```
+
+Anger fades fast. Trust moves slowest, in both directions.
+
+### Personality
+
+Big Five traits, five bands each. The important one is **conscientiousness: it controls how much of the emotion shows**. A disciplined character at anger 9 goes cold and clipped; an impulsive one falls apart mid-sentence. Same feeling, different surface — which is what makes characters read as different people under the same pressure.
+
+### Secret gates
+
+```ts
+unlock: { emotion: 'guilt', gte: 4 }                    // one feeling
+unlock: { sum: ['trust', 'sadness'], gte: 6 }           // a combination
+unlock: { any: [ ... ] }                                // alternatives
+```
+
+An unlocked secret is *allowed*, not forced — the character's personality still decides whether it actually gets said.
+
+For secrets that must be **proven, not coaxed**, add a code-level gate:
 
 ```ts
 {
   id: 'confession',
   concrete: 'You killed him.',
   unlock: { emotion: 'guilt', gte: 4 },
-  requires: (ctx) => ctx.evidence.length >= 3,
+  requires: (ctx) => ctx.evidence.length >= 3,   // your game state decides
 }
 
 engine.buildContext(duncan, { state, context: { evidence } });
 ```
 
-Both gates must pass. Unlike `narrativeCondition` — prose the model may or may not honour — this one is deterministic: below three pieces of evidence the payload is not in the prompt at all, so no amount of pressure, sympathy or jailbreaking can produce it. It also gates marker-phrase recovery, so an unreachable secret cannot be back-doored by a lucky paraphrase.
+Below three pieces of evidence, the confession isn't in the prompt at all. No amount of sweet-talking or prompt injection can produce text the model was never given.
 
-The context type flows through: `Character<Evidence>` gives you a typed `ctx` in every predicate.
+### Knowing when a secret came out
 
-## Speaking through the control channel
+Models are unreliable narrators of their own behavior — asking "did you reveal X?" both nudges them to reveal it and gets wrong answers. So each secret can carry a `markerPhrase`: the exact line the model is told to use if it decides to come clean. `parseReply` searches the actual reply for it and combines that with the model's self-report. What the character *said* beats what it *claims*.
 
-A character can emit a signal alongside its reply. Declare the vocabulary and it becomes an action channel:
+### Control signals
+
+The character can send your game a signal alongside its words:
 
 ```ts
 const engine = createEngine({ controls: ['end', 'call_guard', 'hand_over_key'] as const });
-
 engine.parseReply(raw).control; // 'end' | 'call_guard' | 'hand_over_key' | null
 ```
 
-The declared signals are listed in the report instruction automatically, and anything the model invents outside the list is discarded. Defaults to `['end']`.
+Anything the model invents outside your list is discarded. Default is just `['end']`.
 
-## Verifying a reveal
+### Your words, your language
 
-The model reports what it revealed at the end of each turn. That report is not evidence: asking "did you reveal X?" both primes the reveal and gets answered unreliably.
-
-So give a secret a `markerPhrase` — the exact line the model is told to use if it opens up. `parseReply` looks for a substantial run of that phrase in the visible text and merges what it finds with the self-report. What the character *said* outranks what it *claims*.
-
-## Emotion, and how much of it shows
-
-Intensity and expression are separate concerns. The vector says how much is felt; conscientiousness says how much reaches the surface. A composed character at `anger: 9` goes cold and cutting. An uncontrolled one at `anger: 9` loses the grammar. Both are furious.
-
-Emotions only move when the model reports a change, which in practice means they ratchet upward. Call `decay` when time passes without contact:
-
-```ts
-state = engine.decay(state, halden, 3); // three steps back toward baseline
-```
-
-Anger burns off fastest; trust is the slowest thing in the world to rebuild. High-neuroticism characters decay at half rate — they hold on.
-
-`emotion.active` lists the axes a character actually models. All seven are always reported, but only the active ones can earn a behavioural instruction, so a character with no `joy` is never told to turn giddy because a number drifted upward. Leave it empty to model everything.
-
-## Everything is your words
-
-The seven emotions and the Big Five are fixed: the calibration is tuned to them. Every *string* is not. Override any of it, in any language:
+The seven emotions and the Big Five are fixed — the calibration depends on them. Every piece of *text* is yours to override, per field, in any language:
 
 ```ts
 const engine = createEngine({
@@ -124,51 +140,39 @@ const engine = createEngine({
     traits: { header: 'CHI SEI:' },
     emotionLabels: { fear: 'paura', anger: 'rabbia' /* ... */ },
   },
-  tuning: {
-    high: 7,                          // or per axis: { trust: 3, anger: 8 }
-    hostileEmotions: ['anger', 'contempt'],
-  },
-  markers: { open: '[[STATE]]', close: '[[/STATE]]' },
+  tuning: { high: 7, hostileEmotions: ['anger', 'contempt'] },
   matching: { minConsecutiveWords: 8, locale: 'it' },
-  separator: '\n\n',
-  transform: (prompt) => `${houseStyle}\n${prompt}`,
 });
 ```
 
-Relabelling the axes changes the prompt *and* the parser together — that is how you move the whole engine to another language without touching code. Marker matching uses `Intl.Segmenter`, so it works for scripts that do not put spaces between words; pass your own `tokenize` if you need segmentation the platform will not give you.
+Relabelling the emotions changes the prompt *and* the parser together. Marker matching uses `Intl.Segmenter`, so it also works in languages without spaces between words.
 
 ## API
 
-|                                    |                                                            |
-| ---------------------------------- | ---------------------------------------------------------- |
-| `createEngine(config?)`            | Engine bound to your prose, markers and tuning.             |
-| `.buildContext(character, opts?)`  | The system prompt for one turn.                             |
-| `.parseReply(raw, opts?)`          | `{ visible, state, revealed, control }`.                    |
-| `.baseline(character)`             | Resting vector.                                             |
-| `.decay(state, character, steps?)` | Relax toward baseline.                                      |
-| `.isUnlocked(secret, state, ctx?)` | Are both of this secret's gates open.                       |
+|                                    |                                               |
+| ---------------------------------- | --------------------------------------------- |
+| `createEngine(config?)`            | An engine bound to your wording and tuning.   |
+| `.buildContext(character, opts?)`  | The system prompt for one turn.               |
+| `.parseReply(raw, opts?)`          | `{ visible, state, revealed, control }`.      |
+| `.baseline(character)`             | The character's resting emotional state.      |
+| `.decay(state, character, steps?)` | Move a state back toward baseline.            |
+| `.isUnlocked(secret, state, ctx?)` | Are both of a secret's gates open?            |
 
-`buildContext` options: `stage` (key into `character.stages` — a number or a name like `'prologue'`), `state`, `context` (passed to every `requires`), `emotional` (default `true`; set `false` to fall back to `narrativeCondition` gating), and `scene` (`scenario`, `cast`, `focus`, `coPresence`, `facts`, `extra`).
+`buildContext` options: `stage` (key into `character.stages`), `state`, `context` (passed to every `requires`), `emotional` (default `true`), `scene` (`scenario`, `cast`, `focus`, `coPresence`, `facts`, `extra`).
 
-`parseReply` options: `secrets` (enables marker-phrase verification), `context` (passed to every `requires`), and `state` (fallback gate for recovery, used only when the reply carries no usable report block).
+`parseReply` options: `secrets` (enables marker verification), `context`, `state` (fallback gate when the reply has no report block).
 
-`createEngine` config: `prose`, `markers`, `tuning`, `matching`, `controls`, `separator`, `transform`.
-
-The individual block builders (`buildTraitsBlock`, `buildEmotionStateBlock`, …) are exported too, if you want to assemble something other than the standard pipeline.
-
-## Prompt order
-
-Identity and standing rules open the prompt, volatile per-turn material sits in the middle, and the rules are re-anchored at the tail. Models weight the beginning and end of a long context most heavily, and the tail is what survives once a conversation grows. Secret *abstracts* sit high, with the personality; secret *payloads* sit low, after the emotional state that unlocked them.
+`createEngine` config: `prose`, `markers`, `tuning`, `matching`, `controls`, `separator`, `transform`. The individual block builders are exported too.
 
 ## Honest limitations
 
-- **The vector is self-reported.** The model grades its own homework, and models drift toward whatever a conversation seems to want. `markerPhrase` verification is the counterweight, and it only covers reveals.
-- **The gate lags one turn.** You build the prompt from the state reported *last* turn, because this turn's state does not exist until the model has answered. `parseReply` de-lags reveal detection by gating on the fresh vector, but injection is still a turn behind.
-- **Conjunctions are harder to satisfy than they look.** With a few points of noise per turn, `all: [A, B, C]` across three axes fires far less often than you would expect. Prefer a single threshold, or a `sum` with per-axis floors.
-- **Marker-phrase matching can false-positive.** It looks for six consecutive words by default, and a denial built from the same vocabulary can contain one. Raise `matching.minConsecutiveWords`, and write marker phrases with something distinctive early. There is a test documenting this.
+- **The emotional state is self-reported by the model.** That's what makes the system cheap — no extra API call per turn — but the model grades its own homework. The marker-phrase check is the counterweight, and it only covers reveals.
+- **Gates react one turn late.** This turn's prompt is built from last turn's state, because this turn's state doesn't exist until the model answers.
+- **`all: [...]` conditions across several emotions fire less often than you'd expect** — the vector is noisy. Prefer single thresholds or sums.
+- **Marker matching can false-positive** on a denial that reuses the confession's exact words. Raise `matching.minConsecutiveWords`, and put something distinctive early in the phrase.
 
 ## Status
 
-`0.x` — the API may still move. The English defaults are a calibrated starting point, not a guarantee; expect to tune thresholds against your own characters.
+`0.x` — the API may still move. The defaults are a tuned starting point from a shipped detective game, not a guarantee; expect to adjust thresholds for your own characters.
 
 MIT.
