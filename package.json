@@ -1,0 +1,40 @@
+{
+  "name": "llm-character",
+  "version": "0.1.0",
+  "description": "Build LLM character prompts with personality traits, a live emotion vector, and secrets that unlock only when the character actually feels like talking.",
+  "keywords": ["llm", "npc", "character", "ai", "prompt", "dialogue", "game", "roleplay", "emotion", "personality", "agent"],
+  "license": "MIT",
+  "author": "Alessandro Ceruti",
+  "repository": { "type": "git", "url": "git+https://github.com/Kimerao0/llm-character.git" },
+  "homepage": "https://github.com/Kimerao0/llm-character#readme",
+  "bugs": { "url": "https://github.com/Kimerao0/llm-character/issues" },
+  "type": "module",
+  "files": ["dist"],
+  "exports": {
+    ".": {
+      "import": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
+      "require": { "types": "./dist/index.d.cts", "default": "./dist/index.cjs" }
+    }
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "lint:pkg": "publint && attw --pack .",
+    "prepublishOnly": "npm run build"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "^0.17.4",
+    "publint": "^0.3.9",
+    "tsup": "^8.4.0",
+    "typescript": "^5.8.2",
+    "vitest": "^3.0.9"
+  },
+  "publishConfig": { "access": "public" },
+  "engines": { "node": ">=18" }
+}
