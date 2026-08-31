@@ -2,18 +2,43 @@
   "name": "llm-character",
   "version": "0.1.0",
   "description": "Build LLM character prompts with personality traits, a live emotion vector, and secrets that unlock only when the character actually feels like talking.",
-  "keywords": ["llm", "npc", "character", "ai", "prompt", "dialogue", "game", "roleplay", "emotion", "personality", "agent"],
+  "keywords": [
+    "llm",
+    "npc",
+    "character",
+    "ai",
+    "prompt",
+    "dialogue",
+    "game",
+    "roleplay",
+    "emotion",
+    "personality",
+    "agent"
+  ],
   "license": "MIT",
   "author": "Alessandro Ceruti",
-  "repository": { "type": "git", "url": "git+https://github.com/Kimerao0/llm-character.git" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Kimerao0/llm-character.git"
+  },
   "homepage": "https://github.com/Kimerao0/llm-character#readme",
-  "bugs": { "url": "https://github.com/Kimerao0/llm-character/issues" },
+  "bugs": {
+    "url": "https://github.com/Kimerao0/llm-character/issues"
+  },
   "type": "module",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "exports": {
     ".": {
-      "import": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
-      "require": { "types": "./dist/index.d.cts", "default": "./dist/index.cjs" }
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
     }
   },
   "main": "./dist/index.cjs",
@@ -23,6 +48,7 @@
   "scripts": {
     "build": "tsup",
     "test": "vitest run",
+    "example": "tsx examples/interrogation.ts",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "lint:pkg": "publint && attw --pack .",
@@ -32,9 +58,14 @@
     "@arethetypeswrong/cli": "^0.17.4",
     "publint": "^0.3.9",
     "tsup": "^8.4.0",
+    "tsx": "^4.23.13",
     "typescript": "^5.8.2",
     "vitest": "^3.0.9"
   },
-  "publishConfig": { "access": "public" },
-  "engines": { "node": ">=18" }
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=18"
+  }
 }
