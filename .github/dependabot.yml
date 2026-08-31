@@ -1,0 +1,13 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    # Mirror of pnpm's minimumReleaseAge: wait out the fresh-malware window.
+    cooldown:
+      default-days: 3

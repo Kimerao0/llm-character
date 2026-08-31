@@ -1,0 +1,16 @@
+name: Feature request
+description: Something the library should let you configure or do
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What are you trying to build, and where does the library stop you?
+    validations:
+      required: true
+  - type: textarea
+    id: shape
+    attributes:
+      label: The shape you'd expect
+      description: Rough sketch of the API or config you imagined. Note the fixed parts (the 7 emotions, Big Five, the 0-10 scale) are fixed on purpose — see docs/design.md.
