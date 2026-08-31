@@ -1,9 +1,15 @@
 name: Release
 
-# Publishes via npm trusted publishing (OIDC) — no NPM_TOKEN.
+# Publishes via npm trusted publishing (OIDC) — no NPM_TOKEN anywhere.
+#
 # One-time setup on npmjs.com: Package settings → Trusted publisher →
 # GitHub Actions, repo Kimerao0/llm-character, workflow release.yml.
-# Provenance attestations are generated automatically; no --provenance flag.
+# Provenance attestations are then generated automatically (no --provenance).
+#
+# Note the split: pnpm installs, tests and builds, but the publish step itself
+# runs through the npm CLI. `pnpm publish` with OIDC is broken on pnpm 11
+# (404s — https://github.com/pnpm/pnpm/issues/11513), and npm's own client has
+# first-class support, so the last step goes through npm deliberately.
 
 on:
   push:
@@ -18,15 +24,16 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org
-          cache: npm
-      # Trusted publishing requires npm >= 11.5.1, newer than the bundled CLI.
+          cache: pnpm
+      # Trusted publishing needs npm >= 11.5.1, newer than the bundled CLI.
       - run: npm install -g npm@latest
-      - run: npm ci
-      - run: npm run typecheck
-      - run: npm test
-      - run: npm run build
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run typecheck
+      - run: pnpm test
+      - run: pnpm run build
       - run: npm publish
