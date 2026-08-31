@@ -55,7 +55,7 @@
     "prepublishOnly": "npm run build"
   },
   "devDependencies": {
-    "@arethetypeswrong/cli": "^0.17.4",
+    "@arethetypeswrong/cli": "^0.18.5",
     "@types/node": "^26.4.0",
     "publint": "^0.3.9",
     "tsup": "^8.4.0",
