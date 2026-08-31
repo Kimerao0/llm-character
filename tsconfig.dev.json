@@ -1,0 +1,11 @@
+{
+  // Tests and examples run on Node, so they get Node's globals.
+  // The base config deliberately does not, which is what keeps the published
+  // library free of any assumption about where it runs.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "noEmit": true
+  },
+  "include": ["src", "test", "examples"]
+}

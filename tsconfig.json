@@ -11,7 +11,8 @@
     "skipLibCheck": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
-    "outDir": "dist"
+    "outDir": "dist",
+    "types": []
   },
-  "include": ["src", "test", "examples"]
+  "include": ["src"]
 }
