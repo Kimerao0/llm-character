@@ -150,6 +150,8 @@ Relabelling the axes changes the prompt *and* the parser together — that is ho
 
 `buildContext` options: `stage` (key into `character.stages` — a number or a name like `'prologue'`), `state`, `context` (passed to every `requires`), `emotional` (default `true`; set `false` to fall back to `narrativeCondition` gating), and `scene` (`scenario`, `cast`, `focus`, `coPresence`, `facts`, `extra`).
 
+`parseReply` options: `secrets` (enables marker-phrase verification), `context` (passed to every `requires`), and `state` (fallback gate for recovery, used only when the reply carries no usable report block).
+
 `createEngine` config: `prose`, `markers`, `tuning`, `matching`, `controls`, `separator`, `transform`.
 
 The individual block builders (`buildTraitsBlock`, `buildEmotionStateBlock`, …) are exported too, if you want to assemble something other than the standard pipeline.
