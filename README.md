@@ -1,5 +1,7 @@
 # llm-character
 
+[![CI](https://github.com/Kimerao0/llm-character/actions/workflows/ci.yml/badge.svg)](https://github.com/Kimerao0/llm-character/actions/workflows/ci.yml)
+
 **Give your LLM characters secrets they can actually keep.**
 
 You're building a game or an app where people talk to AI characters. Some characters know things they shouldn't say: the suspect did it, the merchant can be bribed, the guard saw who left. You have two bad options:

@@ -2,3 +2,7 @@
 # tsup) runs a postinstall to resolve its platform binary.
 allowBuilds:
   esbuild: true
+
+# Supply-chain cooldown: refuse versions published less than 3 days ago,
+# the window in which compromised releases are usually caught and pulled.
+minimumReleaseAge: 4320

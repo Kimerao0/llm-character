@@ -48,6 +48,10 @@ The workflow installs, typechecks, tests and builds with pnpm, then publishes wi
 the **npm** CLI. That split is deliberate: `pnpm publish` with OIDC is broken on
 pnpm 11 (pnpm/pnpm#11513). Don't "tidy" the last step back to pnpm.
 
+Workflow actions are pinned to commit SHAs, not tags — a hijacked tag is a
+supply-chain vector. Dependabot proposes pin updates; don't hand-edit back to
+`@v4`.
+
 One-time setup on npmjs.com: Package settings → Trusted publisher → GitHub
 Actions, this repo, workflow `release.yml`. Provenance attestations are then
 generated automatically — no `--provenance` flag needed.
