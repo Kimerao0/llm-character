@@ -112,7 +112,7 @@ For secrets that must be **proven, not coaxed**, add a code-level gate:
   requires: (ctx) => ctx.evidence.length >= 3,   // your game state decides
 }
 
-engine.buildContext(duncan, { state, context: { evidence } });
+engine.buildContext(marlow, { state, context: { evidence } });
 ```
 
 Below three pieces of evidence, the confession isn't in the prompt at all. No amount of sweet-talking or prompt injection can produce text the model was never given.
