@@ -2,6 +2,9 @@ import { EMOTIONS, type EmotionProfile, type EmotionVector, type Traits, type Un
 import type { Tuning } from './prose';
 import { defaultTuning } from './defaults/en';
 
+/** Only the fields decay actually reads — accepts raw or resolved tuning alike. */
+type DecayTuning = Pick<Tuning, 'decayPerStep' | 'slowDecayFactor'>;
+
 /** Evaluate an unlock expression against a state vector. */
 export function evaluateUnlock(condition: UnlockCondition, state: EmotionVector): boolean {
   if ('emotion' in condition) return (state[condition.emotion] ?? 0) >= condition.gte;
@@ -39,7 +42,7 @@ export function decayEmotions(
   baseline: Partial<EmotionVector>,
   traits: Traits,
   steps: number,
-  tuning: Tuning = defaultTuning
+  tuning: DecayTuning = defaultTuning
 ): EmotionVector {
   const slow = traits.neuroticism === 'high' || traits.neuroticism === 'very_high';
   const factor = slow ? tuning.slowDecayFactor : 1;

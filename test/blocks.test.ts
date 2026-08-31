@@ -7,6 +7,7 @@ import {
   defaultTuning,
   enMarkers,
   enProse,
+  resolveTuning,
 } from '../src';
 import type { Traits } from '../src';
 import { porter, vector } from './fixtures';
@@ -20,8 +21,10 @@ const traits = (overrides: Partial<Traits> = {}): Traits => ({
   ...overrides,
 });
 
+const resolved = resolveTuning(defaultTuning);
+
 const state = (v: Parameters<typeof vector>[0], t: Partial<Traits> = {}) =>
-  buildEmotionStateBlock(vector(v), traits(t), enProse, defaultTuning);
+  buildEmotionStateBlock(vector(v), traits(t), { prose: enProse, tuning: resolved });
 
 describe('buildCore', () => {
   it('carries identity, epistemic bound and the standing rules', () => {
@@ -99,7 +102,10 @@ describe('buildEmotionStateBlock', () => {
   });
 
   it('honours a retuned threshold', () => {
-    const raised = buildEmotionStateBlock(vector({ anger: 7 }), traits(), enProse, { ...defaultTuning, high: 8 });
+    const raised = buildEmotionStateBlock(vector({ anger: 7 }), traits(), {
+      prose: enProse,
+      tuning: resolveTuning({ high: 8 }),
+    });
     expect(raised).not.toContain('Emotions running HIGH');
   });
 });

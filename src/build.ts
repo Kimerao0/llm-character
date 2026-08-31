@@ -1,5 +1,5 @@
-import type { BuildOptions, Character, Secret } from './types';
-import type { Markers, Prose, Tuning } from './prose';
+import type { BuildOptions, Character, EmotionVector, Secret } from './types';
+import type { Markers, Prose, ResolvedTuning } from './prose';
 import { baselineVector, evaluateUnlock } from './emotions';
 import {
   buildCore,
@@ -8,6 +8,27 @@ import {
   buildReportSkeleton,
   buildTraitsBlock,
 } from './blocks';
+
+export interface BuildDeps {
+  prose: Prose;
+  markers: Markers;
+  tuning: ResolvedTuning;
+  controls: readonly string[];
+  /** Placed between top-level blocks. */
+  separator: string;
+  transform?: (prompt: string) => string;
+}
+
+/**
+ * Both gates on a secret. The emotional one asks whether the character could bear
+ * to say it; `requires` asks whether the world has earned it. A secret that must
+ * never be talked out of someone — only proven — carries a `requires` and stays
+ * out of the prompt entirely until it passes, no matter how the conversation goes.
+ */
+export function gatesOpen<C>(secret: Secret<C>, state: EmotionVector, context: C): boolean {
+  if (secret.requires && !secret.requires(context)) return false;
+  return evaluateUnlock(secret.unlock, state);
+}
 
 /**
  * Assemble the system prompt.
@@ -18,21 +39,21 @@ import {
  * and the tail is what survives once the conversation grows.
  *
  * Every secret contributes its `abstract` in the CHARACTER slab, so the character
- * always knows it is carrying something. Only an unlocked secret contributes its
- * `concrete`, and only in the EMOTIONAL slab, well after the personality that
- * governs whether it actually gets said.
+ * always knows it is carrying something. Only a secret whose gates are open
+ * contributes its `concrete`, and only in the EMOTIONAL slab, well after the
+ * personality that governs whether it actually gets said.
  */
-export function buildContext(
-  character: Character,
-  options: BuildOptions,
-  prose: Prose,
-  markers: Markers,
-  tuning: Tuning
+export function buildContext<C = unknown>(
+  character: Character<C>,
+  options: BuildOptions<C>,
+  deps: BuildDeps
 ): string {
+  const { prose, markers, tuning, controls, separator, transform } = deps;
   const parts: string[] = [];
-  const secrets: readonly Secret[] = character.secrets ?? [];
+  const secrets: readonly Secret<C>[] = character.secrets ?? [];
   const emotional = options.emotional ?? true;
   const scene = options.scene ?? {};
+  const context = options.context as C;
 
   // 1 — core: who you are, what binds you, the standing rules
   parts.push(buildCore(character, prose));
@@ -58,20 +79,32 @@ export function buildContext(
   // 5 — emotional layer, or plain narrative gating when it is off
   if (emotional) {
     const state = options.state ?? baselineVector(character.emotion);
-    parts.push(buildEmotionStateBlock(state, character.traits, prose, tuning));
+    parts.push(
+      buildEmotionStateBlock(state, character.traits, {
+        prose,
+        tuning,
+        active: character.emotion.active,
+        controls,
+      })
+    );
     for (const secret of secrets) {
-      if (evaluateUnlock(secret.unlock, state)) parts.push(prose.secrets.reveal(secret, markers.secretTag));
+      if (gatesOpen(secret, state, context)) parts.push(prose.secrets.reveal(secret, markers.secretTag));
     }
     parts.push(
       prose.report(
         buildReportSkeleton(prose, markers.open, markers.close),
         markers.open,
         markers.close,
-        markers.secretTag
+        markers.secretTag,
+        controls
       )
     );
   } else {
-    for (const secret of secrets) parts.push(prose.secrets.narrativeGated(secret));
+    // `requires` still applies — it is a fact about the world, not about feeling.
+    for (const secret of secrets) {
+      if (secret.requires && !secret.requires(context)) continue;
+      parts.push(prose.secrets.narrativeGated(secret));
+    }
   }
 
   // 6 — who else is here, and the facts everyone must agree on
@@ -81,5 +114,6 @@ export function buildContext(
   // 7 — re-anchor
   parts.push(prose.coreReanchor);
 
-  return parts.join('\n').trim();
+  const prompt = parts.join(separator).trim();
+  return transform ? transform(prompt) : prompt;
 }

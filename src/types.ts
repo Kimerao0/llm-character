@@ -34,28 +34,49 @@ export type UnlockCondition =
 /**
  * Two-tier secret. The point of the split: `abstract` is always in the prompt, so
  * the character knows it is holding something back and can behave evasively about
- * it, while `concrete` — the part that would spoil it — only enters once `unlock`
- * passes. Without the split you either leak the payload on turn one or the
- * character has no idea it has an inner life.
+ * it, while `concrete` — the part that would spoil it — only enters once the gates
+ * open. Without the split you either leak the payload on turn one or the character
+ * has no idea it has an inner life.
  */
-export interface Secret {
+export interface Secret<TContext = unknown> {
   id: string;
   /** Always present. What it feels like to carry this. Must contain no payload. */
   abstract: string;
-  /** Injected only once `unlock` passes. The actual content. */
+  /** Injected only once the gates open. The actual content. */
   concrete: string;
   /**
    * Exact phrase the model is told to use if it chooses to reveal. Gives you a way
    * to confirm a reveal from the visible text instead of trusting a self-report.
    */
   markerPhrase?: string;
+  /** The emotional gate. */
   unlock: UnlockCondition;
+  /**
+   * A second, non-emotional gate, evaluated in code against whatever you pass as
+   * `context`. Both this and `unlock` must pass.
+   *
+   * Use it for anything the player must have earned rather than felt their way to:
+   * evidence collected, an item in hand, a stage reached. Unlike `narrativeCondition`
+   * — prose the model may or may not honour — this one is deterministic, so a
+   * confession that must never be talked out of someone can be made genuinely
+   * unreachable until the proof exists.
+   *
+   *   requires: (ctx) => ctx.evidence.length >= 3
+   */
+  requires?: (context: TContext) => boolean;
   /** Used in place of `unlock` when the emotional layer is disabled. */
   narrativeCondition?: string;
 }
 
 export interface EmotionProfile {
-  /** Which axes are live for this character. Unlisted ones stay at baseline. */
+  /**
+   * Which axes are modelled for this character. Only these can earn a behavioural
+   * instruction in the state block — a character with no `joy` will not be told to
+   * turn giddy because a number drifted up. Leave it empty to model all seven.
+   *
+   * The reported vector always carries all seven regardless; this governs which of
+   * them shape behaviour.
+   */
   active: readonly Emotion[];
   /** Resting values. Anything unset is 0. */
   baseline: Partial<EmotionVector>;
@@ -63,7 +84,7 @@ export interface EmotionProfile {
   sensitivities: string;
 }
 
-export interface Character {
+export interface Character<TContext = unknown> {
   /** Who you are, where you are, who you are talking to. */
   identity: string;
   /** What you may know, what you must not do, and what no amount of pressure changes. */
@@ -75,9 +96,9 @@ export interface Character {
   voice?: string;
   /** Any additional standing context for this character. */
   background?: string;
-  secrets?: readonly Secret[];
-  /** Stage-indexed knowledge — what this character knows and says at a given point. */
-  stages?: Record<number, string>;
+  secrets?: readonly Secret<TContext>[];
+  /** Stage-keyed knowledge — what this character knows and says at a given point. */
+  stages?: Record<string | number, string>;
 }
 
 /** Per-turn situational context. Everything optional; omitted blocks are simply absent. */
@@ -96,24 +117,26 @@ export interface SceneContext {
   extra?: readonly string[];
 }
 
-export interface BuildOptions {
-  /** Index into `character.stages`. Omit if the character has no stages. */
-  stage?: number;
+export interface BuildOptions<TContext = unknown> {
+  /** Key into `character.stages`. Omit if the character has no stages. */
+  stage?: string | number;
   /** Default true. When false, secrets fall back to `narrativeCondition` gating. */
   emotional?: boolean;
   /** Current emotion vector. Defaults to the character's baseline. */
   state?: EmotionVector;
   scene?: SceneContext;
+  /** Passed to every secret's `requires` predicate. */
+  context?: TContext;
 }
 
 /** What the model reported at the end of a turn, once parsed out of the reply. */
-export interface ParsedReply {
+export interface ParsedReply<TControl extends string = string> {
   /** The reply with the report block stripped — what you show the player. */
   visible: string;
   /** Updated vector, or null if absent/malformed. */
   state: EmotionVector | null;
   /** Secret ids the model claims it revealed, merged with marker-phrase recovery. */
   revealed: string[];
-  /** Set to 'end' when the character wants to end the conversation. */
-  control: 'end' | null;
+  /** One of the engine's configured control signals, or null. */
+  control: TControl | null;
 }

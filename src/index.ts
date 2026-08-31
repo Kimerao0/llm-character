@@ -18,18 +18,35 @@ export {
   type ParsedReply,
 } from './types';
 
-export type { Prose, Markers, Tuning, EngineConfig, DeepPartial } from './prose';
+export type {
+  Prose,
+  Markers,
+  Tuning,
+  ResolvedTuning,
+  Threshold,
+  MatchingConfig,
+  EngineConfig,
+  DeepPartial,
+} from './prose';
 
-export { enProse, enMarkers, defaultTuning } from './defaults/en';
+export { enProse, enMarkers, defaultTuning, defaultMatching } from './defaults/en';
 
 // Lower-level pieces, for composing something other than the standard pipeline.
 export { evaluateUnlock, baselineVector, clampVector, decayEmotions } from './emotions';
-export { buildContext } from './build';
-export { parseReply, recoverRevealed, type ParseOptions } from './parse';
+export { buildContext, gatesOpen, type BuildDeps } from './build';
+export {
+  parseReply,
+  recoverRevealed,
+  type ParseOptions,
+  type ParseDeps,
+  type RecoverOptions,
+} from './parse';
 export {
   buildCore,
   buildTraitsBlock,
   buildEmotionProfileBlock,
   buildEmotionStateBlock,
   buildReportSkeleton,
+  resolveTuning,
+  type StateBlockOptions,
 } from './blocks';

@@ -1,34 +1,61 @@
 import { EMOTIONS, type Emotion, type EmotionVector, type ParsedReply, type Secret } from './types';
-import type { Markers, Prose } from './prose';
+import type { Markers, MatchingConfig, Prose } from './prose';
+import { defaultMatching } from './defaults/en';
 import { evaluateUnlock } from './emotions';
 
 const escapeRe = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /**
- * How many consecutive words of a marker phrase must appear verbatim before we
- * count a secret as revealed. Conservative enough to survive light paraphrase
- * without firing on incidental word overlap.
+ * Split text into comparable words.
+ *
+ * `Intl.Segmenter` is used when available because splitting on spaces silently
+ * excludes every script that does not use them — Chinese, Japanese, Thai — and it
+ * drops punctuation for us rather than needing a hand-maintained list of marks
+ * per language. The fallback keeps letters and numbers and throws the rest away.
  */
-const MIN_CONSECUTIVE_WORDS = 6;
-
-function normalize(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[.,;:!?'’]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+function defaultTokenize(text: string, locale?: string): string[] {
+  const lower = text.toLowerCase();
+  if (typeof Intl !== 'undefined' && typeof Intl.Segmenter === 'function') {
+    const segmenter = new Intl.Segmenter(locale, { granularity: 'word' });
+    return Array.from(segmenter.segment(lower))
+      .filter((segment) => segment.isWordLike)
+      .map((segment) => segment.segment);
+  }
+  return lower
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .split(/\s+/)
+    .filter(Boolean);
 }
 
-function containsSubstantialPortion(haystack: string, phrase: string): boolean {
-  const target = normalize(haystack);
-  const words = normalize(phrase).split(' ').filter(Boolean);
-  if (words.length === 0) return false;
-
-  const window = Math.min(MIN_CONSECUTIVE_WORDS, words.length);
-  for (let i = 0; i <= words.length - window; i++) {
-    if (target.includes(words.slice(i, i + window).join(' '))) return true;
+/** Does `haystack` contain `run` as a contiguous sequence? */
+function hasRun(haystack: readonly string[], run: readonly string[]): boolean {
+  if (run.length === 0 || run.length > haystack.length) return false;
+  outer: for (let i = 0; i <= haystack.length - run.length; i++) {
+    for (let j = 0; j < run.length; j++) {
+      if (haystack[i + j] !== run[j]) continue outer;
+    }
+    return true;
   }
   return false;
+}
+
+function containsSubstantialPortion(haystack: string, phrase: string, matching: MatchingConfig): boolean {
+  const tokenize = matching.tokenize ?? defaultTokenize;
+  const target = tokenize(haystack, matching.locale);
+  const words = tokenize(phrase, matching.locale);
+  if (words.length === 0) return false;
+
+  const window = Math.min(matching.minConsecutiveWords, words.length);
+  for (let i = 0; i <= words.length - window; i++) {
+    if (hasRun(target, words.slice(i, i + window))) return true;
+  }
+  return false;
+}
+
+export interface RecoverOptions<TContext = unknown> {
+  /** Passed to each secret's `requires` predicate. */
+  context?: TContext;
+  matching?: Partial<MatchingConfig>;
 }
 
 /**
@@ -39,30 +66,48 @@ function containsSubstantialPortion(haystack: string, phrase: string): boolean {
  * unreliably, so the self-report is merged with — not trusted over — what the
  * text actually contains.
  *
- * Only currently-unlocked secrets are eligible, which keeps a marker phrase that
- * happens to surface early from registering as a reveal.
+ * Only secrets whose gates are open are eligible, which keeps a marker phrase
+ * that happens to surface early from registering as a reveal.
  */
-export function recoverRevealed(text: string, secrets: readonly Secret[], state: EmotionVector): string[] {
+export function recoverRevealed<TContext = unknown>(
+  text: string,
+  secrets: readonly Secret<TContext>[],
+  state: EmotionVector,
+  options: RecoverOptions<TContext> = {}
+): string[] {
+  const matching: MatchingConfig = { ...defaultMatching, ...options.matching };
+  const context = options.context as TContext;
   const recovered: string[] = [];
+
   for (const secret of secrets) {
     if (!secret.markerPhrase) continue;
+    if (secret.requires && !secret.requires(context)) continue;
     if (!evaluateUnlock(secret.unlock, state)) continue;
-    if (containsSubstantialPortion(text, secret.markerPhrase) && !recovered.includes(secret.id)) {
+    if (containsSubstantialPortion(text, secret.markerPhrase, matching) && !recovered.includes(secret.id)) {
       recovered.push(secret.id);
     }
   }
   return recovered;
 }
 
-export interface ParseOptions {
-  /** Enables marker-phrase recovery. Without these the reveal list is the model's word alone. */
-  secrets?: readonly Secret[];
+export interface ParseOptions<TContext = unknown> {
+  /** Enables marker-phrase verification. Without these the reveal list is the model's word alone. */
+  secrets?: readonly Secret<TContext>[];
   /**
    * Fallback state for recovery gating, used only when the reply carries no
    * usable report block. When the block parses, this turn's fresh vector is used
    * instead — the gate that matters is the one the character was actually under.
    */
   state?: EmotionVector;
+  /** Passed to each secret's `requires` predicate. */
+  context?: TContext;
+}
+
+export interface ParseDeps<TControl extends string = string> {
+  prose: Prose;
+  markers: Markers;
+  matching: MatchingConfig;
+  controls: readonly TControl[];
 }
 
 /**
@@ -71,12 +116,12 @@ export interface ParseOptions {
  * Fails closed: an incomplete or malformed report leaves `state` null so the
  * caller keeps the previous vector rather than adopting a half-parsed one.
  */
-export function parseReply(
+export function parseReply<TContext = unknown, TControl extends string = string>(
   raw: string,
-  prose: Prose,
-  markers: Markers,
-  options: ParseOptions = {}
-): ParsedReply {
+  deps: ParseDeps<TControl>,
+  options: ParseOptions<TContext> = {}
+): ParsedReply<TControl> {
+  const { prose, markers, matching, controls } = deps;
   const open = escapeRe(markers.open);
   const close = escapeRe(markers.close);
   const blockRe = new RegExp(`${open}([\\s\\S]*?)${close}`);
@@ -102,7 +147,7 @@ export function parseReply(
   );
 
   let state: EmotionVector | null = null;
-  let control: 'end' | null = null;
+  let control: TControl | null = null;
   let reported: string[] = [];
 
   if (match?.[1] !== undefined) {
@@ -127,7 +172,10 @@ export function parseReply(
           if (complete) state = clean;
         }
 
-        if (obj.control === 'end') control = 'end';
+        // Anything outside the declared vocabulary is discarded, invented or not.
+        if (typeof obj.control === 'string' && (controls as readonly string[]).includes(obj.control)) {
+          control = obj.control as TControl;
+        }
 
         if (Array.isArray(obj.revealed)) {
           reported = obj.revealed.filter((x): x is string => typeof x === 'string' && x.length > 0);
@@ -140,7 +188,9 @@ export function parseReply(
 
   const gateState = state ?? options.state;
   const recovered =
-    options.secrets && gateState ? recoverRevealed(visible, options.secrets, gateState) : [];
+    options.secrets && gateState
+      ? recoverRevealed(visible, options.secrets, gateState, { context: options.context, matching })
+      : [];
 
   const known = new Set(options.secrets?.map((secret) => secret.id));
   const revealed = [...new Set([...reported, ...recovered])].filter(

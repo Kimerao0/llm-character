@@ -41,8 +41,8 @@ export interface Prose {
     midLevel: (labels: string[]) => string;
     /** Conscientiousness gate — how much of the state reaches the surface. */
     control: Record<'low' | 'mid' | 'high', string>;
-    /** Fires when anger or contempt reach the hostility threshold. */
-    hostility: string;
+    /** Fires when a hostile emotion reaches its threshold. Receives the control vocabulary. */
+    hostility: (controls: readonly string[]) => string;
   };
 
   scene: {
@@ -50,17 +50,18 @@ export interface Prose {
   };
 
   secrets: {
-    /** Wraps the payload once the gate opens. */
-    reveal: (secret: Secret, secretTag: string) => string;
+    /** Wraps the payload once the gates open. */
+    reveal: (secret: Secret<never>, secretTag: string) => string;
     /** Used instead when the emotional layer is off. */
-    narrativeGated: (secret: Secret) => string;
+    narrativeGated: (secret: Secret<never>) => string;
   };
 
   /**
    * The end-of-turn self-report instruction. Receives the exact skeleton the model
-   * should emit (already built from your labels and markers) plus the delimiters.
+   * should emit (already built from your labels and markers), the delimiters, the
+   * secret tag, and the control signals you have declared.
    */
-  report: (skeleton: string, open: string, close: string, secretTag: string) => string;
+  report: (skeleton: string, open: string, close: string, secretTag: string, controls: readonly string[]) => string;
 }
 
 /** Delimiters wrapping the model's end-of-turn state report. */
@@ -74,20 +75,54 @@ export interface Markers {
   secretTag: string;
 }
 
-/** Numeric calibration. Tuned against the English defaults — change with care. */
+/**
+ * A threshold that is either uniform across the axes, or set per emotion.
+ * Unlisted emotions fall back to the library default for that field.
+ */
+export type Threshold = number | Partial<Record<Emotion, number>>;
+
+/** Numeric calibration as you supply it. */
 export interface Tuning {
   /** At or above this, an emotion gets an explicit behavioural instruction. */
-  high: number;
+  high: Threshold;
   /** At or above this, the instruction escalates further. */
-  extreme: number;
+  extreme: Threshold;
   /** At or above this (and below `high`), an emotion is named as moderate. */
-  midLow: number;
-  /** Anger or contempt at or above this unlocks refusing to cooperate. */
-  hostility: number;
+  midLow: Threshold;
+  /** A hostile emotion at or above this unlocks refusing to cooperate. */
+  hostility: Threshold;
+  /** Which emotions can trigger the hostility clause. */
+  hostileEmotions: readonly Emotion[];
   /** Points per step each emotion falls back toward baseline. */
   decayPerStep: Record<Emotion, number>;
   /** Multiplier applied to decay for high-neuroticism characters — they hold on longer. */
   slowDecayFactor: number;
+}
+
+/** Calibration after per-emotion thresholds have been expanded. What the builders consume. */
+export interface ResolvedTuning extends Omit<Tuning, 'high' | 'extreme' | 'midLow' | 'hostility'> {
+  high: Record<Emotion, number>;
+  extreme: Record<Emotion, number>;
+  midLow: Record<Emotion, number>;
+  hostility: Record<Emotion, number>;
+}
+
+/** How marker phrases are matched against what the character actually said. */
+export interface MatchingConfig {
+  /**
+   * How many consecutive words of a marker phrase must appear before a reveal is
+   * counted. Lower catches looser paraphrase; higher avoids matching a denial
+   * built from the same vocabulary.
+   */
+  minConsecutiveWords: number;
+  /** BCP-47 locale for the default word segmenter. */
+  locale?: string;
+  /**
+   * Split text into comparable words. The default uses `Intl.Segmenter`, which
+   * handles scripts that do not separate words with spaces; override only if you
+   * need segmentation the platform does not give you.
+   */
+  tokenize?: (text: string, locale?: string) => string[];
 }
 
 export type DeepPartial<T> = {
@@ -98,8 +133,21 @@ export type DeepPartial<T> = {
       : T[K];
 };
 
-export interface EngineConfig {
+export interface EngineConfig<TControl extends string = 'end'> {
   prose?: DeepPartial<Prose>;
   markers?: Partial<Markers>;
   tuning?: Partial<Tuning>;
+  matching?: Partial<MatchingConfig>;
+  /**
+   * Control signals the character may emit alongside a reply. Defaults to `['end']`.
+   *
+   * Declare more and dialogue becomes an action channel: the model can hand you
+   * `call_guard` or `open_the_door` and you dispatch on it. Anything the model
+   * emits that is not on this list is discarded.
+   */
+  controls?: readonly TControl[];
+  /** Placed between the prompt's top-level blocks. Defaults to a single newline. */
+  separator?: string;
+  /** Last hook before the prompt is returned. Prefix, redact, count tokens, whatever. */
+  transform?: (prompt: string) => string;
 }

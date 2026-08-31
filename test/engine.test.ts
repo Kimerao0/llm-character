@@ -6,7 +6,8 @@ describe('createEngine', () => {
   it('ships usable defaults with no configuration', () => {
     const engine = createEngine();
     expect(engine.buildContext(porter)).toContain('YOUR PERSONALITY:');
-    expect(engine.tuning).toEqual(defaultTuning);
+    expect(engine.tuning.high.anger).toBe(6);
+    expect(engine.controls).toEqual(['end']);
   });
 
   it('merges a single prose override without disturbing the rest', () => {
@@ -20,7 +21,7 @@ describe('createEngine', () => {
 
   it('merges a single tuning value without dropping the decay table', () => {
     const engine = createEngine({ tuning: { high: 8 } });
-    expect(engine.tuning.high).toBe(8);
+    expect(engine.tuning.high.anger).toBe(8);
     expect(engine.tuning.decayPerStep).toEqual(defaultTuning.decayPerStep);
   });
 

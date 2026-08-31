@@ -63,6 +63,37 @@ unlock: { all: [{ emotion: 'trust', gte: 3 }, { emotion: 'sadness', gte: 3 }] }
 
 An unlocked secret is *permitted*, never compelled — whether it actually gets said is still governed by the personality above it in the prompt.
 
+### Secrets that must be earned, not felt
+
+Some things should never be talked out of someone, however well the conversation goes. Add `requires` — a predicate evaluated in code against whatever you pass as `context`:
+
+```ts
+{
+  id: 'confession',
+  concrete: 'You killed him.',
+  unlock: { emotion: 'guilt', gte: 4 },
+  requires: (ctx) => ctx.evidence.length >= 3,
+}
+
+engine.buildContext(duncan, { state, context: { evidence } });
+```
+
+Both gates must pass. Unlike `narrativeCondition` — prose the model may or may not honour — this one is deterministic: below three pieces of evidence the payload is not in the prompt at all, so no amount of pressure, sympathy or jailbreaking can produce it. It also gates marker-phrase recovery, so an unreachable secret cannot be back-doored by a lucky paraphrase.
+
+The context type flows through: `Character<Evidence>` gives you a typed `ctx` in every predicate.
+
+## Speaking through the control channel
+
+A character can emit a signal alongside its reply. Declare the vocabulary and it becomes an action channel:
+
+```ts
+const engine = createEngine({ controls: ['end', 'call_guard', 'hand_over_key'] as const });
+
+engine.parseReply(raw).control; // 'end' | 'call_guard' | 'hand_over_key' | null
+```
+
+The declared signals are listed in the report instruction automatically, and anything the model invents outside the list is discarded. Defaults to `['end']`.
+
 ## Verifying a reveal
 
 The model reports what it revealed at the end of each turn. That report is not evidence: asking "did you reveal X?" both primes the reveal and gets answered unreliably.
@@ -81,6 +112,8 @@ state = engine.decay(state, halden, 3); // three steps back toward baseline
 
 Anger burns off fastest; trust is the slowest thing in the world to rebuild. High-neuroticism characters decay at half rate — they hold on.
 
+`emotion.active` lists the axes a character actually models. All seven are always reported, but only the active ones can earn a behavioural instruction, so a character with no `joy` is never told to turn giddy because a number drifted upward. Leave it empty to model everything.
+
 ## Everything is your words
 
 The seven emotions and the Big Five are fixed: the calibration is tuned to them. Every *string* is not. Override any of it, in any language:
@@ -91,12 +124,18 @@ const engine = createEngine({
     traits: { header: 'CHI SEI:' },
     emotionLabels: { fear: 'paura', anger: 'rabbia' /* ... */ },
   },
-  tuning: { high: 7 },
+  tuning: {
+    high: 7,                          // or per axis: { trust: 3, anger: 8 }
+    hostileEmotions: ['anger', 'contempt'],
+  },
   markers: { open: '[[STATE]]', close: '[[/STATE]]' },
+  matching: { minConsecutiveWords: 8, locale: 'it' },
+  separator: '\n\n',
+  transform: (prompt) => `${houseStyle}\n${prompt}`,
 });
 ```
 
-Relabelling the axes changes the prompt *and* the parser together — that is how you move the whole engine to another language without touching code.
+Relabelling the axes changes the prompt *and* the parser together — that is how you move the whole engine to another language without touching code. Marker matching uses `Intl.Segmenter`, so it works for scripts that do not put spaces between words; pass your own `tokenize` if you need segmentation the platform will not give you.
 
 ## API
 
@@ -107,9 +146,11 @@ Relabelling the axes changes the prompt *and* the parser together — that is ho
 | `.parseReply(raw, opts?)`          | `{ visible, state, revealed, control }`.                    |
 | `.baseline(character)`             | Resting vector.                                             |
 | `.decay(state, character, steps?)` | Relax toward baseline.                                      |
-| `.isUnlocked(secret, state)`       | Is this gate open.                                          |
+| `.isUnlocked(secret, state, ctx?)` | Are both of this secret's gates open.                       |
 
-`buildContext` options: `stage` (index into `character.stages`), `state`, `emotional` (default `true`; set `false` to fall back to `narrativeCondition` gating), and `scene` (`scenario`, `cast`, `focus`, `coPresence`, `facts`, `extra`).
+`buildContext` options: `stage` (key into `character.stages` — a number or a name like `'prologue'`), `state`, `context` (passed to every `requires`), `emotional` (default `true`; set `false` to fall back to `narrativeCondition` gating), and `scene` (`scenario`, `cast`, `focus`, `coPresence`, `facts`, `extra`).
+
+`createEngine` config: `prose`, `markers`, `tuning`, `matching`, `controls`, `separator`, `transform`.
 
 The individual block builders (`buildTraitsBlock`, `buildEmotionStateBlock`, …) are exported too, if you want to assemble something other than the standard pipeline.
 
@@ -122,7 +163,7 @@ Identity and standing rules open the prompt, volatile per-turn material sits in 
 - **The vector is self-reported.** The model grades its own homework, and models drift toward whatever a conversation seems to want. `markerPhrase` verification is the counterweight, and it only covers reveals.
 - **The gate lags one turn.** You build the prompt from the state reported *last* turn, because this turn's state does not exist until the model has answered. `parseReply` de-lags reveal detection by gating on the fresh vector, but injection is still a turn behind.
 - **Conjunctions are harder to satisfy than they look.** With a few points of noise per turn, `all: [A, B, C]` across three axes fires far less often than you would expect. Prefer a single threshold, or a `sum` with per-axis floors.
-- **Marker-phrase matching can false-positive.** It looks for six consecutive words, and a denial built from the same vocabulary can contain one. Write marker phrases with something distinctive early. There is a test documenting this.
+- **Marker-phrase matching can false-positive.** It looks for six consecutive words by default, and a denial built from the same vocabulary can contain one. Raise `matching.minConsecutiveWords`, and write marker phrases with something distinctive early. There is a test documenting this.
 
 ## Status
 
