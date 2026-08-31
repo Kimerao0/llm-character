@@ -8,8 +8,8 @@ interface Evidence {
 }
 
 /** A character whose confession cannot be felt out of him — only proven. */
-const duncan: Character<Evidence> = {
-  identity: 'You are Duncan. You are speaking to a detective.',
+const marlow: Character<Evidence> = {
+  identity: 'You are Marlow. You are speaking to a detective.',
   epistemicBound: 'You deny everything by default.',
   traits: {
     neuroticism: 'high',
@@ -36,34 +36,34 @@ describe('requires — the non-emotional gate', () => {
   const guilty = vector({ guilt: 8 });
 
   it('withholds the payload when the world has not earned it, however guilty he feels', () => {
-    const prompt = engine.buildContext(duncan, { state: guilty, context: { clues: 0 } });
+    const prompt = engine.buildContext(marlow, { state: guilty, context: { clues: 0 } });
     expect(prompt).not.toContain('You killed him.');
   });
 
   it('injects it once both gates pass', () => {
-    const prompt = engine.buildContext(duncan, { state: guilty, context: { clues: 3 } });
+    const prompt = engine.buildContext(marlow, { state: guilty, context: { clues: 3 } });
     expect(prompt).toContain('You killed him.');
   });
 
   it('still needs the emotional gate even with the evidence in hand', () => {
-    const prompt = engine.buildContext(duncan, { state: vector({ guilt: 1 }), context: { clues: 5 } });
+    const prompt = engine.buildContext(marlow, { state: vector({ guilt: 1 }), context: { clues: 5 } });
     expect(prompt).not.toContain('You killed him.');
   });
 
   it('applies with the emotional layer off too — evidence is a fact, not a feeling', () => {
     const off = { emotional: false as const, context: { clues: 0 } };
-    expect(engine.buildContext(duncan, off)).not.toContain('You killed him.');
-    expect(engine.buildContext(duncan, { ...off, context: { clues: 3 } })).toContain('You killed him.');
+    expect(engine.buildContext(marlow, off)).not.toContain('You killed him.');
+    expect(engine.buildContext(marlow, { ...off, context: { clues: 3 } })).toContain('You killed him.');
   });
 
   it('blocks marker-phrase recovery too, so an unreachable secret cannot be back-doored', () => {
     const said = 'All right. It was me. I did it and I have nothing left to say about it.';
-    expect(recoverRevealed(said, duncan.secrets!, guilty, { context: { clues: 0 } })).toEqual([]);
-    expect(recoverRevealed(said, duncan.secrets!, guilty, { context: { clues: 3 } })).toEqual(['confession']);
+    expect(recoverRevealed(said, marlow.secrets!, guilty, { context: { clues: 0 } })).toEqual([]);
+    expect(recoverRevealed(said, marlow.secrets!, guilty, { context: { clues: 3 } })).toEqual(['confession']);
   });
 
   it('reports through isUnlocked', () => {
-    const secret = duncan.secrets![0] as Secret<Evidence>;
+    const secret = marlow.secrets![0] as Secret<Evidence>;
     expect(engine.isUnlocked(secret, guilty, { clues: 3 })).toBe(true);
     expect(engine.isUnlocked(secret, guilty, { clues: 2 })).toBe(false);
   });
