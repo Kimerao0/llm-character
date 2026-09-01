@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.1 — 2026-09-01
+
+- Documentation only: refreshed the evidence-gate example in the README.
+
 ## 0.1.0 — 2026-08-31
 
 First release.

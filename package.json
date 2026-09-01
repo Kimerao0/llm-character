@@ -1,6 +1,6 @@
 {
   "name": "llm-character",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Build LLM character prompts with personality traits, a live emotion vector, and secrets that unlock only when the character actually feels like talking.",
   "keywords": [
     "llm",
