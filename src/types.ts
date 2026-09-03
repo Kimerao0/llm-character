@@ -68,6 +68,23 @@ export interface Secret<TContext = unknown> {
   narrativeCondition?: string;
 }
 
+/**
+ * Something the character may report having done, so the host can react to it
+ * without reading prose.
+ *
+ * The same contract as `revealed`, for occurrences rather than secrets: you
+ * declare the vocabulary, the character reports only what actually happened in
+ * the visible text this turn, and anything you did not declare is discarded.
+ * It is a record kept after the fact — never an instruction, and never a reason
+ * for the character to do the thing.
+ */
+export interface ReportableEvent {
+  /** Stable key your application switches on. Never shown to the user. */
+  id: string;
+  /** What must actually have happened in the visible text for this to count. */
+  when: string;
+}
+
 export interface EmotionProfile {
   /**
    * Which axes are modelled for this character. Only these can earn a behavioural
@@ -97,6 +114,8 @@ export interface Character<TContext = unknown> {
   /** Any additional standing context for this character. */
   background?: string;
   secrets?: readonly Secret<TContext>[];
+  /** Occurrences this character may report. See ReportableEvent. */
+  events?: readonly ReportableEvent[];
   /** Stage-keyed knowledge — what this character knows and says at a given point. */
   stages?: Record<string | number, string>;
 }
@@ -137,6 +156,8 @@ export interface ParsedReply<TControl extends string = string> {
   state: EmotionVector | null;
   /** Secret ids the model claims it revealed, merged with marker-phrase recovery. */
   revealed: string[];
+  /** Declared event ids the model reports happened this turn. Undeclared ids are dropped. */
+  events: string[];
   /** One of the engine's configured control signals, or null. */
   control: TControl | null;
 }
