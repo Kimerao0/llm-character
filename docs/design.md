@@ -120,16 +120,19 @@ Japanese and Thai outright, and stripping punctuation by hand needs a per-langua
 list of marks. The segmenter handles both. There is a whitespace fallback for
 environments without it.
 
-**Apostrophe glyphs are folded before tokenising; accents are not.** UAX#29 keeps
-an apostrophe — straight or curly — glued inside its word rather than breaking on
-it, which is correct, but the segmenter goes by codepoint: `'` and `’` still come
+**Apostrophe glyphs are folded before tokenising; accents are not.** The
+segmenter keeps an apostrophe glued inside its word rather than breaking on it —
+true of the straight form (`U+0027`), both curly quotation marks a model might
+type in its place (`U+2019` and `U+2018`, which models occasionally use as an
+apostrophe too), and the modifier-letter apostrophe (`U+02BC`) used for elisions
+in some languages — but it goes by codepoint, so `'`, `’`, `‘` and `ʼ` still come
 out as different tokens for the same elided word. A marker phrase and a model
 reply are written by two different hands with no reason to agree on the glyph, so
-`defaultTokenize` folds `'`, `’` and `ʼ` to plain `'` first, on both tokeniser
-paths. Accents get no such treatment: they change pronunciation and sometimes
-meaning in the languages this library serves, so folding them would be lossy in a
-way apostrophe variants are not. If this ever needs to grow, grow the fold list,
-not the rule.
+`defaultTokenize` folds all four to plain `'` first, on both tokeniser paths.
+Accents get no such treatment: they change pronunciation and sometimes meaning in
+the languages this library serves, so folding them would be lossy in a way
+apostrophe variants are not. If this ever needs to grow, grow the fold list, not
+the rule.
 
 ## Calibration
 

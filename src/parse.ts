@@ -20,19 +20,32 @@ const escapeRe = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
  * drops punctuation for us rather than needing a hand-maintained list of marks
  * per language. The fallback keeps letters and numbers and throws the rest away.
  *
- * Apostrophe variants are folded to plain `U+0027` before either path runs.
- * UAX#29 classifies `U+0027`, the curly `U+2019` and `U+02BC` all as MidLetter,
- * so `Intl.Segmenter` is right to keep any of them glued inside a word rather
- * than splitting on it — but "right to keep inside the word" is not "treated
- * as the same word": the segmenter goes by codepoint, not by role, so
- * "wasn't" and "wasn’t" come out as two different tokens, never one. A marker
- * phrase is authored once, in one file; a model reply is typed by a model
- * with no reason to prefer that glyph. Without the fold, whichever one the
- * author didn't happen to pick silently breaks recovery — the secret was
- * said, and nothing records it. This is deliberately narrower than general
- * Unicode normalization: accents are left alone because they carry meaning in
- * the languages this library serves, and folding those would be a different,
- * much larger decision.
+ * Apostrophe variants are folded to plain `U+0027` before either path runs:
+ * the curly `U+2019` and `U+2018` (models occasionally type the left quote
+ * where an apostrophe belongs, not only the right one), and the
+ * modifier-letter apostrophe `U+02BC`, used to spell elisions in several
+ * languages. `Intl.Segmenter` already keeps all four glued inside a word
+ * rather than splitting on them — the straight and curly forms because
+ * UAX#29's word-joining rule names them explicitly, `U+02BC` because it is
+ * itself classified as a letter — but "not split on" is not "treated as the
+ * same word": the segmenter compares codepoints, not roles, so "wasn't" and
+ * "wasn’t" come out as two different tokens, never one. A marker phrase is
+ * authored once, in one file; a model reply is typed by a model with no
+ * reason to prefer that glyph. Without the fold, whichever one the author
+ * didn't happen to pick silently breaks recovery — the secret was said, and
+ * nothing records it.
+ *
+ * This is a regression, not a new problem. The regex fallback below strips
+ * every character that is not a letter or a digit, so it was already
+ * glyph-consistent on its own — all four apostrophe variants disappear the
+ * same way. Preferring `Intl.Segmenter` when it exists is what routed
+ * matching back through the one path with no such fold, reintroducing a bug
+ * a downstream consumer of this matcher had already hit and fixed on its own
+ * copy, before this library existed to extract it into.
+ *
+ * Deliberately narrower than general Unicode normalization: accents are left
+ * alone because they carry meaning in the languages this library serves, and
+ * folding those would be a different, much larger decision.
  */
 function defaultTokenize(text: string, locale?: string): string[] {
   const lower = text.toLowerCase().replace(/[‘’ʼ]/g, "'");

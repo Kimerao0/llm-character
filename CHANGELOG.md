@@ -15,12 +15,13 @@
   though — `ParsedReply.events` is required, so TypeScript code that
   type-constructs a `ParsedReply` (a mocked `parseReply` return, say) needs to
   add it.
-- Fix: marker-phrase matching now folds apostrophe variants (`'`, `’`, `ʼ`) to a
-  plain `'` before tokenizing, on both the `Intl.Segmenter` path and the regex
-  fallback in `defaultTokenize`. A marker phrase authored with one glyph and a
-  reply typed with another used to tokenize as different words and silently
-  fail to match — a revealed secret going unrecorded with no error. Accents are
-  untouched; this is not general Unicode normalization.
+- Fix: marker-phrase matching now folds apostrophe variants — `'`, the curly
+  `’` (`U+2019`) and `‘` (`U+2018`), and the modifier-letter `ʼ` (`U+02BC`) — to
+  a plain `'` before tokenizing, on both the `Intl.Segmenter` path and the
+  regex fallback in `defaultTokenize`. A marker phrase authored with one glyph
+  and a reply typed with another used to tokenize as different words and
+  silently fail to match — a revealed secret going unrecorded with no error.
+  Accents are untouched; this is not general Unicode normalization.
 
 ## 0.1.1 — 2026-09-01
 
