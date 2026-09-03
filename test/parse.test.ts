@@ -169,6 +169,37 @@ describe('recoverRevealed', () => {
     const text = `${marker} And more. I kept a copy of the key to room twelve in my coat.`;
     expect(recoverRevealed(text, two, open).sort()).toEqual(['left-the-desk', 'the-key']);
   });
+
+  // UAX#29 classifies both the straight apostrophe (U+0027) and the curly right
+  // single quotation mark (U+2019) as MidLetter, so `Intl.Segmenter` keeps either
+  // one glued inside its word rather than treating it as a break — correct for
+  // word-hood, but it means "wasn't" and "wasn’t" tokenize as two different
+  // words, never one. A marker phrase is authored once in a file; a model reply
+  // is typed by a model with no reason to prefer that glyph. The marker below is
+  // deliberately exactly `minConsecutiveWords` long so the run has nowhere else
+  // to land — with a longer phrase, a window further from the elision can dodge
+  // the mismatched token entirely and the bug hides, which is how it survived
+  // unnoticed in a real deployment's marker set.
+  describe('apostrophe glyphs do not change whether a reveal is recovered', () => {
+    const confession = {
+      id: 'left-the-gate',
+      abstract: 'a',
+      concrete: 'b',
+      markerPhrase: "It wasn't me who did it.",
+      unlock: { emotion: 'guilt' as const, gte: 4 },
+    };
+
+    it('recovers a straight-apostrophe marker from a reply typed with the curly glyph', () => {
+      const reply = 'Fine. It wasn’t me who did it, I swear.';
+      expect(recoverRevealed(reply, [confession], open)).toEqual(['left-the-gate']);
+    });
+
+    it('recovers a curly-apostrophe marker from a reply typed with the straight glyph', () => {
+      const curlyMarker = { ...confession, markerPhrase: 'It wasn’t me who did it.' };
+      const reply = "Fine. It wasn't me who did it, I swear.";
+      expect(recoverRevealed(reply, [curlyMarker], open)).toEqual(['left-the-gate']);
+    });
+  });
 });
 
 describe('reported events', () => {

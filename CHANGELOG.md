@@ -12,6 +12,12 @@
 - Additive and backward compatible: a character with no `events` gets no block
   and no `events` field in the report skeleton; `parseReply` without an `events`
   option always returns `events: []`.
+- Fix: marker-phrase matching now folds apostrophe variants (`'`, `’`, `ʼ`) to a
+  plain `'` before tokenizing, on both the `Intl.Segmenter` path and the regex
+  fallback in `defaultTokenize`. A marker phrase authored with one glyph and a
+  reply typed with another used to tokenize as different words and silently
+  fail to match — a revealed secret going unrecorded with no error. Accents are
+  untouched; this is not general Unicode normalization.
 
 ## 0.1.1 — 2026-09-01
 
