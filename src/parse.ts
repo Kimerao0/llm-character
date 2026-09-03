@@ -1,4 +1,11 @@
-import { EMOTIONS, type Emotion, type EmotionVector, type ParsedReply, type Secret } from './types';
+import {
+  EMOTIONS,
+  type Emotion,
+  type EmotionVector,
+  type ParsedReply,
+  type ReportableEvent,
+  type Secret,
+} from './types';
 import type { Markers, MatchingConfig, Prose } from './prose';
 import { defaultMatching } from './defaults/en';
 import { evaluateUnlock } from './emotions';
@@ -101,6 +108,8 @@ export interface ParseOptions<TContext = unknown> {
   state?: EmotionVector;
   /** Passed to each secret's `requires` predicate. */
   context?: TContext;
+  /** The declared vocabulary. Ids outside it are discarded. Without this, no events are returned. */
+  events?: readonly ReportableEvent[];
 }
 
 export interface ParseDeps<TControl extends string = string> {
@@ -132,7 +141,10 @@ export function parseReply<TContext = unknown, TControl extends string = string>
   // variants like [/SECRET], or loose delimiters. Strip whatever survives so it
   // never reaches a player, then collapse the double space a mid-sentence
   // removal leaves behind, without touching newlines.
-  const strayRe = new RegExp(`\\[/?${escapeRe(markers.secretTag)}[^\\]]*\\]|${open}|${close}`, 'gi');
+  const strayRe = new RegExp(
+    `\\[/?(?:${escapeRe(markers.secretTag)}|${escapeRe(markers.eventTag)})[^\\]]*\\]|${open}|${close}`,
+    'gi'
+  );
   const strip = (text: string): string =>
     text
       .replace(strayRe, '')
@@ -149,6 +161,7 @@ export function parseReply<TContext = unknown, TControl extends string = string>
   let state: EmotionVector | null = null;
   let control: TControl | null = null;
   let reported: string[] = [];
+  let reportedEvents: string[] = [];
 
   if (match?.[1] !== undefined) {
     try {
@@ -180,6 +193,10 @@ export function parseReply<TContext = unknown, TControl extends string = string>
         if (Array.isArray(obj.revealed)) {
           reported = obj.revealed.filter((x): x is string => typeof x === 'string' && x.length > 0);
         }
+
+        if (Array.isArray(obj.events)) {
+          reportedEvents = obj.events.filter((x): x is string => typeof x === 'string' && x.length > 0);
+        }
       }
     } catch {
       // Malformed JSON — keep the visible text, report nothing.
@@ -198,5 +215,10 @@ export function parseReply<TContext = unknown, TControl extends string = string>
     (id) => known.size === 0 || known.has(id)
   );
 
-  return { visible, state, revealed, control };
+  // Declared-only, matching how `control` is handled: models invent plausible
+  // ids, and a host's dispatch must never receive one it has no branch for.
+  const declaredEvents = new Set((options.events ?? []).map((event) => event.id));
+  const events = [...new Set(reportedEvents)].filter((id) => declaredEvents.has(id));
+
+  return { visible, state, revealed, control, events };
 }
