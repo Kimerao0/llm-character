@@ -185,6 +185,7 @@ Relabelling the emotions changes the prompt *and* the parser together. Marker ma
 ## Honest limitations
 
 - **The emotional state is self-reported by the model.** That's what makes the system cheap — no extra API call per turn — but the model grades its own homework. The marker-phrase check is the counterweight, and it only covers reveals.
+- **`events` have no counterweight at all.** Secrets get a partial cross-check against the visible text via `markerPhrase` and `recoverRevealed`; events don't — there's no `recoverEvents`. `parseReply` only filters the model's self-reported ids against your declared vocabulary, so `events` is purely the model's word on what it did. Weigh that before wiring one straight to a side effect.
 - **Gates react one turn late.** This turn's prompt is built from last turn's state, because this turn's state doesn't exist until the model answers.
 - **`all: [...]` conditions across several emotions fire less often than you'd expect** — the vector is noisy. Prefer single thresholds or sums.
 - **Marker matching can false-positive** on a denial that reuses the confession's exact words. Raise `matching.minConsecutiveWords`, and put something distinctive early in the phrase.
