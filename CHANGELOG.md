@@ -9,9 +9,12 @@
   vocabulary you passed via `ParseOptions.events`; anything undeclared is
   discarded, the same rule as `control`.
 - `buildEventsBlock`, exported alongside the other block builders.
-- Additive and backward compatible: a character with no `events` gets no block
-  and no `events` field in the report skeleton; `parseReply` without an `events`
-  option always returns `events: []`.
+- Additive at runtime: a character with no `events` gets no block and no
+  `events` field in the report skeleton; `parseReply` without an `events`
+  option always returns `events: []`. Not a compile-time no-op for everyone,
+  though — `ParsedReply.events` is required, so TypeScript code that
+  type-constructs a `ParsedReply` (a mocked `parseReply` return, say) needs to
+  add it.
 - Fix: marker-phrase matching now folds apostrophe variants (`'`, `’`, `ʼ`) to a
   plain `'` before tokenizing, on both the `Intl.Segmenter` path and the regex
   fallback in `defaultTokenize`. A marker phrase authored with one glyph and a
