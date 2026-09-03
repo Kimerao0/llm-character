@@ -113,6 +113,19 @@ describe('buildContext', () => {
 
   it('declares events before the report instruction that references them', () => {
     const out = engine.buildContext({ ...porter, events: [{ id: 'paid', when: 'you confirmed the payment' }] }, {});
+    // Without this, a missing block makes `indexOf` return -1 and the ordering
+    // assertion below passes on nothing at all.
+    expect(out).toContain('[EVENT id:"paid"]');
     expect(out.indexOf('[EVENT id:"paid"]')).toBeLessThan(out.indexOf('"events":[]'));
+  });
+
+  it('declares no events when the emotional layer is off, since there is no report block', () => {
+    const withEvents = { ...porter, events: [{ id: 'paid', when: 'you confirmed the payment' }] };
+    const off = engine.buildContext(withEvents, { emotional: false });
+    expect(off).not.toContain('[EVENT id:"paid"]');
+    expect(off).not.toContain('"events":[]');
+    // The same character with emotions on does declare them — otherwise the two
+    // assertions above would hold for a build that dropped events entirely.
+    expect(engine.buildContext(withEvents, {})).toContain('[EVENT id:"paid"]');
   });
 });

@@ -137,6 +137,8 @@ if (events.includes('refund_offered')) await ledger.recordOffer();
 
 The report is post-hoc, alongside the emotional state, not an instruction: the character does not do a thing because it's on the list, any more than it reveals a secret because `revealed` exists. And the vocabulary is closed, the same rule as `control` — an id the model invents that you never declared is discarded, so your dispatch never receives a branch it has no case for. A character with no `events` gets no block at all: nothing added to the prompt, nothing ever returned.
 
+The channel rides on the emotional layer, so `buildContext(character, { emotional: false })` declares no events either — with the self-report block gone there is nowhere to report them. Turning emotions off and declaring `events` gives you silence, not an error.
+
 ### Control signals
 
 The character can send your game a signal alongside its words:

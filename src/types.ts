@@ -114,7 +114,13 @@ export interface Character<TContext = unknown> {
   /** Any additional standing context for this character. */
   background?: string;
   secrets?: readonly Secret<TContext>[];
-  /** Occurrences this character may report. See ReportableEvent. */
+  /**
+   * Occurrences this character may report. See ReportableEvent.
+   *
+   * Only reported while the emotional layer is on. Under `emotional: false` there
+   * is no end-of-turn self-report block for anything to be reported in, so the
+   * vocabulary is never declared and no event ever comes back.
+   */
   events?: readonly ReportableEvent[];
   /** Stage-keyed knowledge — what this character knows and says at a given point. */
   stages?: Record<string | number, string>;

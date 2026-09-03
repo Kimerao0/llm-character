@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildCore,
   buildEmotionStateBlock,
+  buildEventsBlock,
   buildReportSkeleton,
   buildTraitsBlock,
   defaultTuning,
@@ -10,7 +11,6 @@ import {
   resolveTuning,
 } from '../src';
 import type { Traits } from '../src';
-import { buildEventsBlock } from '../src/blocks';
 import { porter, vector } from './fixtures';
 
 const traits = (overrides: Partial<Traits> = {}): Traits => ({

@@ -172,41 +172,43 @@ describe('recoverRevealed', () => {
 
   // `Intl.Segmenter` keeps every apostrophe-like glyph glued inside its word
   // rather than treating it as a break — correct for word-hood, but it means
-  // "wasn't", "wasn’t", "wasn‘t" and "wasnʼt" tokenize as four different
+  // "vault's", "vault’s", "vault‘s" and "vaultʼs" tokenize as four different
   // words, never one. A marker phrase is authored once in a file; a model
   // reply is typed by a model with no reason to prefer that glyph. The marker
-  // below is deliberately exactly `minConsecutiveWords` long so the run has
-  // nowhere else to land — with a longer phrase, a window further from the
-  // elision can dodge the mismatched token entirely and the bug hides, which
-  // is how it survived unnoticed in a real deployment's marker set.
+  // below is deliberately exactly `minConsecutiveWords` long — six tokens, one
+  // of them apostrophized — so the run has nowhere else to land. With a longer
+  // phrase, a window clear of the apostrophe can dodge the mismatched token
+  // entirely and the bug hides, which is how it survived unnoticed in a real
+  // deployment's marker set. Lengthen this phrase and the tests keep passing
+  // for the wrong reason.
   describe('apostrophe glyphs do not change whether a reveal is recovered', () => {
     const confession = {
-      id: 'left-the-gate',
+      id: 'opened-the-vault',
       abstract: 'a',
       concrete: 'b',
-      markerPhrase: "It wasn't me who did it.",
+      markerPhrase: "I opened the vault's door myself.",
       unlock: { emotion: 'guilt' as const, gte: 4 },
     };
 
     it('recovers a straight-apostrophe marker from a reply typed with the curly right glyph (U+2019)', () => {
-      const reply = 'Fine. It wasn’t me who did it, I swear.';
-      expect(recoverRevealed(reply, [confession], open)).toEqual(['left-the-gate']);
+      const reply = 'All right. I opened the vault’s door myself, and I would do it again.';
+      expect(recoverRevealed(reply, [confession], open)).toEqual(['opened-the-vault']);
     });
 
     it('recovers a curly-apostrophe marker from a reply typed with the straight glyph', () => {
-      const curlyMarker = { ...confession, markerPhrase: 'It wasn’t me who did it.' };
-      const reply = "Fine. It wasn't me who did it, I swear.";
-      expect(recoverRevealed(reply, [curlyMarker], open)).toEqual(['left-the-gate']);
+      const curlyMarker = { ...confession, markerPhrase: 'I opened the vault’s door myself.' };
+      const reply = "All right. I opened the vault's door myself, and I would do it again.";
+      expect(recoverRevealed(reply, [curlyMarker], open)).toEqual(['opened-the-vault']);
     });
 
     it('recovers a straight-apostrophe marker from a reply typed with the modifier-letter glyph (U+02BC)', () => {
-      const reply = 'Fine. It wasnʼt me who did it, I swear.';
-      expect(recoverRevealed(reply, [confession], open)).toEqual(['left-the-gate']);
+      const reply = 'All right. I opened the vaultʼs door myself, and I would do it again.';
+      expect(recoverRevealed(reply, [confession], open)).toEqual(['opened-the-vault']);
     });
 
     it('recovers a straight-apostrophe marker from a reply typed with the curly left glyph (U+2018)', () => {
-      const reply = 'Fine. It wasn‘t me who did it, I swear.';
-      expect(recoverRevealed(reply, [confession], open)).toEqual(['left-the-gate']);
+      const reply = 'All right. I opened the vault‘s door myself, and I would do it again.';
+      expect(recoverRevealed(reply, [confession], open)).toEqual(['opened-the-vault']);
     });
   });
 });
