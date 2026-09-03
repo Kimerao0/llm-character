@@ -110,4 +110,9 @@ describe('buildContext', () => {
     expect(prompt.indexOf(porter.voice!)).toBeLessThan(prompt.indexOf('BACKGROUND_MARK'));
     expect(prompt.indexOf('BACKGROUND_MARK')).toBeLessThan(prompt.indexOf('decided not to volunteer'));
   });
+
+  it('declares events before the report instruction that references them', () => {
+    const out = engine.buildContext({ ...porter, events: [{ id: 'paid', when: 'you confirmed the payment' }] }, {});
+    expect(out.indexOf('[EVENT id:"paid"]')).toBeLessThan(out.indexOf('"events":[]'));
+  });
 });

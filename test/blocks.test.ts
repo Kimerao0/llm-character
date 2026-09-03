@@ -10,6 +10,7 @@ import {
   resolveTuning,
 } from '../src';
 import type { Traits } from '../src';
+import { buildEventsBlock } from '../src/blocks';
 import { porter, vector } from './fixtures';
 
 const traits = (overrides: Partial<Traits> = {}): Traits => ({
@@ -116,5 +117,32 @@ describe('buildReportSkeleton', () => {
     expect(skeleton).toBe(
       '<<<EMO>>>{"emotions":{"fear":N,"anger":N,"contempt":N,"sadness":N,"joy":N,"trust":N,"guilt":N},"revealed":[],"control":null}<<<END>>>'
     );
+  });
+});
+
+describe('buildReportSkeleton', () => {
+  it('omits the events slot by default, so existing callers are untouched', () => {
+    const out = buildReportSkeleton(enProse, '<<<S>>>', '<<<E>>>');
+    expect(out).not.toContain('"events"');
+  });
+
+  it('adds the events slot after revealed when asked', () => {
+    const out = buildReportSkeleton(enProse, '<<<S>>>', '<<<E>>>', true);
+    expect(out).toContain('"revealed":[],"events":[],"control":null');
+  });
+});
+
+describe('buildEventsBlock', () => {
+  it('tags each declared event with its id', () => {
+    const out = buildEventsBlock(
+      [{ id: 'paid', when: 'you confirmed the payment' }],
+      enProse,
+      enMarkers
+    );
+    expect(out).toContain('[EVENT id:"paid"] you confirmed the payment');
+  });
+
+  it('is empty for an empty vocabulary, so the prompt grows no dangling header', () => {
+    expect(buildEventsBlock([], enProse, enMarkers)).toBe('');
   });
 });
