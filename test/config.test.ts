@@ -208,4 +208,20 @@ describe('event prose is overridable', () => {
     const out = createEngine().buildContext(porter, {});
     expect(out).not.toContain(enProse.events.reportLine('EVENT'));
   });
+
+  it('appends no orphan newline when a host renders reportLine empty, even with events declared', () => {
+    // A host whose `report` prose already covers events overrides `reportLine`
+    // to render nothing. The guard must key off that rendered value, not off
+    // `events.length` — otherwise a bare "\n" survives into the prompt and a
+    // byte-identity gate downstream breaks with no failing test to explain it.
+    const engine = createEngine({
+      prose: { events: { reportLine: () => '' } },
+    });
+    const out = engine.buildContext(
+      { ...porter, events: [{ id: 'paid', when: 'you confirmed the payment' }] },
+      {}
+    );
+    expect(out).toContain(`\n${engine.prose.coreReanchor}`);
+    expect(out).not.toContain(`\n\n${engine.prose.coreReanchor}`);
+  });
 });

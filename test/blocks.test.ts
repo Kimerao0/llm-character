@@ -118,9 +118,7 @@ describe('buildReportSkeleton', () => {
       '<<<EMO>>>{"emotions":{"fear":N,"anger":N,"contempt":N,"sadness":N,"joy":N,"trust":N,"guilt":N},"revealed":[],"control":null}<<<END>>>'
     );
   });
-});
 
-describe('buildReportSkeleton', () => {
   it('omits the events slot by default, so existing callers are untouched', () => {
     const out = buildReportSkeleton(enProse, '<<<S>>>', '<<<E>>>');
     expect(out).not.toContain('"events"');
