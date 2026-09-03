@@ -187,6 +187,16 @@ describe('reported events', () => {
     expect(out.events).toEqual([]);
   });
 
+  it('is empty when nothing is declared, even if the model reports something', () => {
+    const out = engine.parseReply(block(full(',"events":["paid"]')), { events: [] });
+    expect(out.events).toEqual([]);
+  });
+
+  it('dedupes a repeated reported id', () => {
+    const out = engine.parseReply(block(full(',"events":["paid","paid"]')), { events: declared });
+    expect(out.events).toEqual(['paid']);
+  });
+
   it('is empty when the field is absent, so an old prompt still parses', () => {
     expect(engine.parseReply(block(full('')), { events: declared }).events).toEqual([]);
   });
