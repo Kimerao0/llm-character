@@ -30,20 +30,25 @@ block could appear mid-reply you would have to buffer the whole response before
 showing any of it, and streaming dies. The instruction says "the LAST thing you
 write" and "write nothing after" for this reason.
 
-**The post-hoc disclaimer is repeated in five separate places.** Three for
+**The post-hoc disclaimer is repeated in six separate places.** Three for
 `revealed` — `prose.secrets.reveal`, `prose.report`, and the comment above both —
-and two for `events`, in `prose.events.block` and `prose.events.reportLine`, with
-their own comment above them. Asking a model "did you reveal X?" is not a neutral
-question — it raises the salience of X and makes revealing more likely. The
-repetition is load-bearing; each copy was added because the instruction alone was
-not enough. If you trim this for token cost, measure reveal rates before and
-after. On `events` the same priming applies and costs more when it lands: a model
-nudged toward reporting an occurrence is nudged toward causing one — offering the
-refund, handing over the key — so what leaks is a change in what the host
-application *does*, not in what it records. `events.reportLine` restates the
-never-echo rule for the same reason it restates the disclaimer: `prose.report`'s
-hygiene line names only `secretTag`, so nothing else tells the model to keep the
-event tag out of the visible text.
+and three for `events`, in `prose.events.block`, `prose.events.reportLine`, and
+the comment above those. Asking a model "did you reveal X?" is not a neutral
+question — it raises the salience of X and makes revealing more likely. For
+`revealed` the repetition is load-bearing by measurement: each of those three
+copies was added because the instruction alone was not enough. If you trim any of
+them for token cost, measure reveal rates before and after.
+
+The `events` copies were added **by analogy, and have not been measured** — nobody
+has yet compared event-report rates with and without them. Do not read the
+paragraph above as covering them. The analogy is a strong one, because on `events`
+the same priming applies and costs more when it lands: a model nudged toward
+reporting an occurrence is nudged toward causing one — offering the refund, handing
+over the key — so what leaks is a change in what the host application *does*, not
+in what it records. But if you do measure it, record what you find here.
+`events.reportLine` restates the never-echo rule for the same reason it restates
+the disclaimer: `prose.report`'s hygiene line names the secret tag and the
+delimiters, and nothing there covers the event tag.
 
 **Reveal detection merges the self-report with marker-phrase recovery instead of
 preferring one.** The self-report is cheap but unreliable (see above). The text

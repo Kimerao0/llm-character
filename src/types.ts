@@ -117,9 +117,12 @@ export interface Character<TContext = unknown> {
   /**
    * Occurrences this character may report. See ReportableEvent.
    *
-   * Only reported while the emotional layer is on. Under `emotional: false` there
-   * is no end-of-turn self-report block for anything to be reported in, so the
-   * vocabulary is never declared and no event ever comes back.
+   * Declared only while the emotional layer is on. Under `emotional: false` the
+   * prompt carries no end-of-turn self-report block for anything to be reported
+   * in, so the vocabulary never reaches the model and it has no channel to report
+   * on — declare events with emotions off and nothing happens, silently. (The
+   * parser knows nothing of `emotional`, so a report block reaching it by some
+   * other route is still parsed normally.)
    */
   events?: readonly ReportableEvent[];
   /** Stage-keyed knowledge — what this character knows and says at a given point. */
