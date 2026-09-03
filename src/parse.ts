@@ -35,13 +35,21 @@ const escapeRe = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
  * didn't happen to pick silently breaks recovery — the secret was said, and
  * nothing records it.
  *
- * This is a regression, not a new problem. The regex fallback below strips
- * every character that is not a letter or a digit, so it was already
- * glyph-consistent on its own — all four apostrophe variants disappear the
- * same way. Preferring `Intl.Segmenter` when it exists is what routed
- * matching back through the one path with no such fold, reintroducing a bug
- * a downstream consumer of this matcher had already hit and fixed on its own
- * copy, before this library existed to extract it into.
+ * This is a regression, not a new problem — for the quote forms. The regex
+ * fallback below strips every character that is not a letter or a digit, and
+ * `U+0027`, `U+2019` and `U+2018` are all punctuation to it, so the straight
+ * and curly quotes were already glyph-consistent there without this fold; on
+ * the fallback path the fold is a genuine no-op for those three. `U+02BC`
+ * breaks that pattern: `\p{L}` matches the `Lm` category it belongs to, so
+ * the fallback never stripped it — an elided word kept it as one token,
+ * unlike the quote forms. The fold fixes that too, folding `U+02BC` to
+ * `U+0027` before the fallback regex ever runs, which is a small improvement
+ * beyond the regression it repairs, not just a repetition of it. Preferring
+ * `Intl.Segmenter` when it exists is what routed matching back through the
+ * one path with no fold for the quote forms, reintroducing the bug — curly
+ * versus straight, specifically — that a downstream consumer of this matcher
+ * had already hit and fixed on its own copy, before this library existed to
+ * extract it into.
  *
  * Deliberately narrower than general Unicode normalization: accents are left
  * alone because they carry meaning in the languages this library serves, and
