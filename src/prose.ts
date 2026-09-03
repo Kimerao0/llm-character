@@ -1,4 +1,4 @@
-import type { Emotion, Secret, Trait, TraitBand } from './types';
+import type { Emotion, ReportableEvent, Secret, Trait, TraitBand } from './types';
 
 /**
  * Every string this library can put into a prompt. Nothing is hardcoded in the
@@ -56,6 +56,13 @@ export interface Prose {
     narrativeGated: (secret: Secret<never>) => string;
   };
 
+  events: {
+    /** Declares the vocabulary. Receives the declared events and the tag. */
+    block: (events: readonly ReportableEvent[], eventTag: string) => string;
+    /** Appended to `report` only when the character declares events. */
+    reportLine: (eventTag: string) => string;
+  };
+
   /**
    * The end-of-turn self-report instruction. Receives the exact skeleton the model
    * should emit (already built from your labels and markers), the delimiters, the
@@ -73,6 +80,11 @@ export interface Markers {
    * strips these from the visible text, so it has to know what you called them.
    */
   secretTag: string;
+  /**
+   * The tag naming an event block in the prompt (`[EVENT id:"..."]`). Stripped
+   * from the visible text by the parser, like `secretTag`.
+   */
+  eventTag: string;
 }
 
 /**

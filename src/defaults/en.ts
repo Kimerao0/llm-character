@@ -122,6 +122,19 @@ NATURAL CONVERSATION RULE (strict — this outranks every other instruction in t
     narrativeGated: (secret) => [secret.concrete, secret.narrativeCondition].filter(Boolean).join(' '),
   },
 
+  events: {
+    block: (events, eventTag) =>
+      'OCCURRENCES you may report. These are a record kept after the fact, EXACTLY like "revealed": ' +
+      'they are not instructions, they do not ask you to do anything, and they change neither what you ' +
+      'say nor when you say it. If in THIS turn you genuinely did one of these things in the visible ' +
+      'text, list its id in "events"; otherwise leave the list empty []. Never invent an id that is not ' +
+      'below.\n' +
+      events.map((event) => `[${eventTag} id:"${event.id}"] ${event.when}`).join('\n'),
+    reportLine: (eventTag) =>
+      `List in "events" the ids ONLY of the occurrences you actually carried out in this turn's visible ` +
+      `text (the ids appear in the blocks marked [${eventTag} id:"..."]); if none happened, leave the list empty [].`,
+  },
+
   report: (skeleton, open, close, secretTag, controls) =>
     `At the END of every reply, after the visible text, output your updated emotional state in exactly this format, on a single line: ${skeleton}.
 This block is MANDATORY and must be emitted EVERY time, on every single reply, as the LAST thing you write, even when nothing has changed and even if the reply is very short: never omit it for any reason, and write nothing at all after ${close}.
@@ -137,6 +150,7 @@ export const enMarkers: Markers = {
   open: '<<<EMO>>>',
   close: '<<<END>>>',
   secretTag: 'SECRET',
+  eventTag: 'EVENT',
 };
 
 /**

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createEngine, recoverRevealed } from '../src';
+import { createEngine, enProse, recoverRevealed } from '../src';
 import type { Character, Secret } from '../src';
 import { porter, vector } from './fixtures';
 
@@ -189,5 +189,23 @@ describe('assembly options', () => {
   it('runs the transform hook last', () => {
     const engine = createEngine({ transform: (p) => `<<${p.length}>>` });
     expect(engine.buildContext(porter)).toMatch(/^<<\d+>>$/);
+  });
+});
+
+describe('event prose is overridable', () => {
+  it('reaches the prompt through an override', () => {
+    const engine = createEngine({
+      prose: { events: { block: () => 'CUSTOM EVENT BLOCK' } },
+    });
+    const out = engine.buildContext(
+      { ...porter, events: [{ id: 'paid', when: 'you confirmed the payment' }] },
+      {}
+    );
+    expect(out).toContain('CUSTOM EVENT BLOCK');
+  });
+
+  it('says nothing at all when the character declares no events', () => {
+    const out = createEngine().buildContext(porter, {});
+    expect(out).not.toContain(enProse.events.reportLine('EVENT'));
   });
 });
