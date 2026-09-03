@@ -30,12 +30,20 @@ block could appear mid-reply you would have to buffer the whole response before
 showing any of it, and streaming dies. The instruction says "the LAST thing you
 write" and "write nothing after" for this reason.
 
-**`revealed` carries an anti-priming disclaimer in three separate places.**
-`prose.secrets.reveal`, `prose.report`, and the comment above both. Asking a model
-"did you reveal X?" is not a neutral question — it raises the salience of X and
-makes revealing more likely. The repetition is load-bearing; each one was added
-because the instruction alone was not enough. If you trim this for token cost,
-measure reveal rates before and after.
+**The post-hoc disclaimer is repeated in five separate places.** Three for
+`revealed` — `prose.secrets.reveal`, `prose.report`, and the comment above both —
+and two for `events`, in `prose.events.block` and `prose.events.reportLine`, with
+their own comment above them. Asking a model "did you reveal X?" is not a neutral
+question — it raises the salience of X and makes revealing more likely. The
+repetition is load-bearing; each copy was added because the instruction alone was
+not enough. If you trim this for token cost, measure reveal rates before and
+after. On `events` the same priming applies and costs more when it lands: a model
+nudged toward reporting an occurrence is nudged toward causing one — offering the
+refund, handing over the key — so what leaks is a change in what the host
+application *does*, not in what it records. `events.reportLine` restates the
+never-echo rule for the same reason it restates the disclaimer: `prose.report`'s
+hygiene line names only `secretTag`, so nothing else tells the model to keep the
+event tag out of the visible text.
 
 **Reveal detection merges the self-report with marker-phrase recovery instead of
 preferring one.** The self-report is cheap but unreliable (see above). The text
@@ -84,6 +92,16 @@ end of a long context, and the tail is what survives as the conversation grows.
 Secret *abstracts* sit high with the personality; secret *payloads* sit low, after
 the state block that unlocked them, so the disposition governing whether to speak
 is read before the thing that could be said.
+
+The event vocabulary is the one exception. It is standing declaration material
+and by the rule above it belongs high, with the personality — but it sits at the
+very tail instead, immediately before the report instruction, because the report
+line points at the ids by tag and a pointer to a vocabulary the model has not read
+yet points at nothing. Adjacency wins here. The vocabulary and the report line
+also share a fate: both live inside the `emotional` branch of `build.ts`, so with
+emotions off there is no report block and no vocabulary is declared either —
+nothing to report on means nothing worth declaring. `test/build.test.ts` pins the
+order and the silence.
 
 **`requires` is code; `narrativeCondition` is prose.** A prose condition is a
 request the model may ignore under pressure. `requires` is evaluated before

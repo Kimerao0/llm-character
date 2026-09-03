@@ -12,9 +12,19 @@
 - Additive at runtime: a character with no `events` gets no block and no
   `events` field in the report skeleton; `parseReply` without an `events`
   option always returns `events: []`. Not a compile-time no-op for everyone,
-  though — `ParsedReply.events` is required, so TypeScript code that
-  type-constructs a `ParsedReply` (a mocked `parseReply` return, say) needs to
-  add it.
+  though — three fields are now required on exported interfaces, and TypeScript
+  code that builds any of them by hand has to add them:
+  - `Markers.eventTag`, the likeliest of the three to bite: any code that
+    declares a full `Markers` object — a non-English deployment renaming the
+    tags, typically — will not compile until it names this one too.
+  - `ParsedReply.events`, which breaks code that type-constructs a reply, a
+    mocked `parseReply` return being the usual case.
+  - `Prose.events`, which breaks a hand-built full `Prose`, and with it a
+    hand-built `ParseDeps` or `BuildDeps`.
+
+  The common path is untouched: `createEngine` takes `Partial<Markers>` and
+  `DeepPartial<Prose>`, so overriding one marker or a few lines of prose still
+  compiles.
 - Fix: marker-phrase matching now folds apostrophe variants — `'`, the curly
   `’` (`U+2019`) and `‘` (`U+2018`), and the modifier-letter `ʼ` (`U+02BC`) — to
   a plain `'` before tokenizing, on both the `Intl.Segmenter` path and the

@@ -122,6 +122,14 @@ NATURAL CONVERSATION RULE (strict — this outranks every other instruction in t
     narrativeGated: (secret) => [secret.concrete, secret.narrativeCondition].filter(Boolean).join(' '),
   },
 
+  // The bookkeeping note is stated twice on purpose — once in `block` with the
+  // vocabulary, once again in `reportLine` at the tail — exactly as `revealed`
+  // states its own more than once. Do not trim either copy for token cost, and
+  // do not drop the never-echo clause — `prose.report`'s own hygiene line names
+  // only the secret tag. Priming costs more here than it does on a secret: if it
+  // lands, the model does not merely mis-file a ledger entry, it does the thing,
+  // and the host application acts on it. See docs/design.md, "Things that look
+  // like cruft and are not".
   events: {
     block: (events, eventTag) =>
       'OCCURRENCES you may report. These are a record kept after the fact, EXACTLY like "revealed": ' +
@@ -131,8 +139,13 @@ NATURAL CONVERSATION RULE (strict — this outranks every other instruction in t
       'below.\n' +
       events.map((event) => `[${eventTag} id:"${event.id}"] ${event.when}`).join('\n'),
     reportLine: (eventTag) =>
-      `List in "events" the ids ONLY of the occurrences you actually carried out in this turn's visible ` +
-      `text (the ids appear in the blocks marked [${eventTag} id:"..."]); if none happened, leave the list empty [].`,
+      `List in "events" the ids ONLY of the occurrences you actually carried out in this turn's visible text ` +
+      `(the ids appear in the blocks marked [${eventTag} id:"..."]); if none happened, leave the list empty [].\n` +
+      `The "events" field is a record kept after the fact and must NOT influence what you say or do: it is NOT a ` +
+      `reason to do any of these things, or to do them sooner — what you actually do stays governed by your ` +
+      `personality and the situation.\n` +
+      `The [${eventTag} id:"..."] markers belong ONLY to the instructions you receive: never write them in the ` +
+      `visible text, never quote them, never invent new ones — the other person must never see them.`,
   },
 
   report: (skeleton, open, close, secretTag, controls) =>

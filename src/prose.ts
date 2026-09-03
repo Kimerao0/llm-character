@@ -133,6 +133,11 @@ export interface MatchingConfig {
    * Split text into comparable words. The default uses `Intl.Segmenter`, which
    * handles scripts that do not separate words with spaces; override only if you
    * need segmentation the platform does not give you.
+   *
+   * The default also folds apostrophe variants to a plain `'` before segmenting,
+   * so a marker phrase and a reply that spell an elision with different glyphs
+   * still match. A replacement owns its own normalization: without that fold,
+   * `wasn't` and `wasn’t` tokenize as two different words.
    */
   tokenize?: (text: string, locale?: string) => string[];
 }
