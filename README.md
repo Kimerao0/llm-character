@@ -121,6 +121,22 @@ Below three pieces of evidence, the confession isn't in the prompt at all. No am
 
 Models are unreliable narrators of their own behavior — asking "did you reveal X?" both nudges them to reveal it and gets wrong answers. So each secret can carry a `markerPhrase`: the exact line the model is told to use if it decides to come clean. `parseReply` searches the actual reply for it and combines that with the model's self-report. What the character *said* beats what it *claims*.
 
+### Reportable events
+
+Secrets are things a character *knows*; events are things it *did*. A character can declare a vocabulary of occurrences — each with an `id` and, in your own words, the condition for when it counts as having happened — and report which of them it actually carried out this turn:
+
+```ts
+const engine = createEngine();
+const agent: Character = {
+  /* ... */
+  events: [{ id: 'refund_offered', when: 'you actually offered the customer a refund' }],
+};
+const { visible, events } = engine.parseReply(raw, { events: agent.events });
+if (events.includes('refund_offered')) await ledger.recordOffer();
+```
+
+The report is post-hoc, alongside the emotional state, not an instruction: the character does not do a thing because it's on the list, any more than it reveals a secret because `revealed` exists. And the vocabulary is closed, the same rule as `control` — an id the model invents that you never declared is discarded, so your dispatch never receives a branch it has no case for. A character with no `events` gets no block at all: nothing added to the prompt, nothing ever returned.
+
 ### Control signals
 
 The character can send your game a signal alongside its words:
@@ -155,14 +171,14 @@ Relabelling the emotions changes the prompt *and* the parser together. Marker ma
 | ---------------------------------- | --------------------------------------------- |
 | `createEngine(config?)`            | An engine bound to your wording and tuning.   |
 | `.buildContext(character, opts?)`  | The system prompt for one turn.               |
-| `.parseReply(raw, opts?)`          | `{ visible, state, revealed, control }`.      |
+| `.parseReply(raw, opts?)`          | `{ visible, state, revealed, events, control }`. |
 | `.baseline(character)`             | The character's resting emotional state.      |
 | `.decay(state, character, steps?)` | Move a state back toward baseline.            |
 | `.isUnlocked(secret, state, ctx?)` | Are both of a secret's gates open?            |
 
 `buildContext` options: `stage` (key into `character.stages`), `state`, `context` (passed to every `requires`), `emotional` (default `true`), `scene` (`scenario`, `cast`, `focus`, `coPresence`, `facts`, `extra`).
 
-`parseReply` options: `secrets` (enables marker verification), `context`, `state` (fallback gate when the reply has no report block).
+`parseReply` options: `secrets` (enables marker verification), `events` (the declared vocabulary; without it, `events` is always empty), `context`, `state` (fallback gate when the reply has no report block).
 
 `createEngine` config: `prose`, `markers`, `tuning`, `matching`, `controls`, `separator`, `transform`. The individual block builders are exported too.
 

@@ -16,6 +16,7 @@ export {
   type SceneContext,
   type BuildOptions,
   type ParsedReply,
+  type ReportableEvent,
 } from './types';
 
 export type {
@@ -46,6 +47,7 @@ export {
   buildTraitsBlock,
   buildEmotionProfileBlock,
   buildEmotionStateBlock,
+  buildEventsBlock,
   buildReportSkeleton,
   resolveTuning,
   type StateBlockOptions,

@@ -108,6 +108,13 @@ saves tokens and was rejected for making parsing character-dependent.
 signals. An undeclared `control` is discarded rather than passed through, so a
 caller's dispatch never receives something it has no branch for.
 
+**Events are declared, not open.** A model asked to report what happened will
+invent plausible ids. The vocabulary is declared per character and anything
+outside it is discarded, the same rule as `control`, so a host's dispatch never
+receives a branch it does not have. And the reporting instruction is worded as a
+ledger rather than a request, for the same reason `revealed` is: asking whether
+something happened makes it likelier to happen.
+
 **`Intl.Segmenter` for tokenising.** Splitting on spaces excludes Chinese,
 Japanese and Thai outright, and stripping punctuation by hand needs a per-language
 list of marks. The segmenter handles both. There is a whitespace fallback for
