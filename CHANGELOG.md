@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.0 — 2026-09-03
+
+- `Character.events` — a declared vocabulary of `ReportableEvent`s (`{ id, when }`)
+  a character may report having done. Added to the prompt as a ledger, the same
+  way `revealed` is, never as an instruction.
+- `parseReply` returns `events: string[]` — the reported ids, filtered to the
+  vocabulary you passed via `ParseOptions.events`; anything undeclared is
+  discarded, the same rule as `control`.
+- `buildEventsBlock`, exported alongside the other block builders.
+- Additive and backward compatible: a character with no `events` gets no block
+  and no `events` field in the report skeleton; `parseReply` without an `events`
+  option always returns `events: []`.
+
 ## 0.1.1 — 2026-09-01
 
 - Documentation only: refreshed the evidence-gate example in the README.
