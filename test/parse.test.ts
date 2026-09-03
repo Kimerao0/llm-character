@@ -170,3 +170,34 @@ describe('recoverRevealed', () => {
     expect(recoverRevealed(text, two, open).sort()).toEqual(['left-the-desk', 'the-key']);
   });
 });
+
+describe('reported events', () => {
+  const declared = [{ id: 'paid', when: 'you confirmed the payment' }];
+  const block = (json: string) => `Very good. <<<EMO>>>${json}<<<END>>>`;
+  const full = (extra: string) =>
+    `{"emotions":{"fear":0,"anger":0,"contempt":0,"sadness":0,"joy":0,"trust":0,"guilt":0},"revealed":[]${extra},"control":null}`;
+
+  it('returns a declared id the model reported', () => {
+    const out = engine.parseReply(block(full(',"events":["paid"]')), { events: declared });
+    expect(out.events).toEqual(['paid']);
+  });
+
+  it('drops an id nobody declared', () => {
+    const out = engine.parseReply(block(full(',"events":["refunded"]')), { events: declared });
+    expect(out.events).toEqual([]);
+  });
+
+  it('is empty when the field is absent, so an old prompt still parses', () => {
+    expect(engine.parseReply(block(full('')), { events: declared }).events).toEqual([]);
+  });
+
+  it('is empty when the field is not an array', () => {
+    const out = engine.parseReply(block(full(',"events":"paid"')), { events: declared });
+    expect(out.events).toEqual([]);
+  });
+
+  it('strips a stray event tag out of the visible text', () => {
+    const out = engine.parseReply(`Fine. [EVENT id:"paid"] ${block(full(''))}`, { events: declared });
+    expect(out.visible).not.toContain('EVENT');
+  });
+});
