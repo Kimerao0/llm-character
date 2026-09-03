@@ -5,9 +5,10 @@ import {
   type Emotion,
   type EmotionProfile,
   type EmotionVector,
+  type ReportableEvent,
   type Traits,
 } from './types';
-import type { Prose, ResolvedTuning, Threshold, Tuning } from './prose';
+import type { Markers, Prose, ResolvedTuning, Threshold, Tuning } from './prose';
 import { defaultTuning } from './defaults/en';
 
 /** Expand a threshold that may be uniform or per-emotion into a full record. */
@@ -115,8 +116,24 @@ export function buildEmotionStateBlock(
   return parts.join('\n');
 }
 
+/** Declares which occurrences this character may report. Empty when it has none. */
+export function buildEventsBlock(
+  events: readonly ReportableEvent[],
+  prose: Prose,
+  markers: Markers
+): string {
+  if (events.length === 0) return '';
+  return prose.events.block(events, markers.eventTag);
+}
+
 /** The exact line the model is asked to emit, built from the configured labels and markers. */
-export function buildReportSkeleton(prose: Prose, open: string, close: string): string {
+export function buildReportSkeleton(
+  prose: Prose,
+  open: string,
+  close: string,
+  withEvents = false
+): string {
   const emotions = EMOTIONS.map((emotion) => `"${prose.emotionLabels[emotion]}":N`).join(',');
-  return `${open}{"emotions":{${emotions}},"revealed":[],"control":null}${close}`;
+  const events = withEvents ? ',"events":[]' : '';
+  return `${open}{"emotions":{${emotions}},"revealed":[]${events},"control":null}${close}`;
 }

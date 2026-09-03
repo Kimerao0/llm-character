@@ -5,6 +5,7 @@ import {
   buildCore,
   buildEmotionProfileBlock,
   buildEmotionStateBlock,
+  buildEventsBlock,
   buildReportSkeleton,
   buildTraitsBlock,
 } from './blocks';
@@ -90,15 +91,13 @@ export function buildContext<C = unknown>(
     for (const secret of secrets) {
       if (gatesOpen(secret, state, context)) parts.push(prose.secrets.reveal(secret, markers.secretTag));
     }
-    parts.push(
-      prose.report(
-        buildReportSkeleton(prose, markers.open, markers.close),
-        markers.open,
-        markers.close,
-        markers.secretTag,
-        controls
-      )
-    );
+    const events = character.events ?? [];
+    const eventsBlock = buildEventsBlock(events, prose, markers);
+    if (eventsBlock) parts.push(eventsBlock);
+    const skeleton = buildReportSkeleton(prose, markers.open, markers.close, events.length > 0);
+    const report = prose.report(skeleton, markers.open, markers.close, markers.secretTag, controls);
+    const reportLine = events.length > 0 ? prose.events.reportLine(markers.eventTag) : '';
+    parts.push(reportLine ? `${report}\n${reportLine}` : report);
   } else {
     // `requires` still applies — it is a fact about the world, not about feeling.
     for (const secret of secrets) {
