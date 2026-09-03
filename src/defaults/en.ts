@@ -126,7 +126,8 @@ NATURAL CONVERSATION RULE (strict — this outranks every other instruction in t
   // vocabulary, once again in `reportLine` at the tail — exactly as `revealed`
   // states its own more than once. Do not trim either copy for token cost, and
   // do not drop the never-echo clause — `prose.report`'s own hygiene line names
-  // only the secret tag. Priming costs more here than it does on a secret: if it
+  // the secret tag and the delimiters, and nothing there covers the event tag.
+  // Priming costs more here than it does on a secret: if it
   // lands, the model does not merely mis-file a ledger entry, it does the thing,
   // and the host application acts on it. See docs/design.md, "Things that look
   // like cruft and are not".
